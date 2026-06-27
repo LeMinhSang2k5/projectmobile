@@ -13,6 +13,10 @@ import { decode } from 'base64-arraybuffer';
 import { colors } from '../theme/colors';
 import { supabase } from '../../utils/supabase';
 import type { Profile, UserCourse, DailyWaterIntake, DailyNutrition } from '../types';
+import WaterTracker from '../components/WaterTracker';
+import MacroChart from '../components/MacroChart';
+import { getCalorieGoal, getMacroGoals, getWaterGoalMl } from '../services/healthService';
+import { getTodayWater, addWater } from '../services/waterService';
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -43,6 +47,7 @@ type GoalKey = typeof FITNESS_GOALS[number]['key'];
 type Props = {
   userId: string;
   onAvatarUpdated?: (url: string) => void;
+  onNavigateToNutrition?: () => void;
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -241,7 +246,7 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
 // ─────────────────────────────────────────────────────────────────
 // Main ProfileScreen
 // ─────────────────────────────────────────────────────────────────
-export default function ProfileScreen({ userId, onAvatarUpdated }: Props) {
+export default function ProfileScreen({ userId, onAvatarUpdated, onNavigateToNutrition }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeCourse, setActiveCourse] = useState<UserCourse | null>(null);
   const [water, setWater] = useState<DailyWaterIntake | null>(null);
@@ -366,20 +371,12 @@ export default function ProfileScreen({ userId, onAvatarUpdated }: Props) {
     ]);
   };
 
-  const handleAddWaterCup = async () => {
-    const currentCups = water?.water_cups ?? 0;
-    const goal = water?.water_goal ?? 8;
-    if (currentCups >= goal) return;
-    const newCups = currentCups + 1;
-    if (!water) {
-      const { data } = await supabase.from('daily_water_intake')
-        .insert({ user_id: userId, date: today, water_cups: newCups, water_goal: goal })
-        .select().single();
-      if (data) setWater(data);
-    } else {
-      const { data } = await supabase.from('daily_water_intake')
-        .update({ water_cups: newCups }).eq('id', water.id).select().single();
-      if (data) setWater(data);
+  const handleAddWater = async (ml: number) => {
+    try {
+      const updated = await addWater(userId, ml, profile, today);
+      setWater(updated);
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message ?? 'Không thể cập nhật nước');
     }
   };
 
@@ -392,11 +389,12 @@ export default function ProfileScreen({ userId, onAvatarUpdated }: Props) {
     );
   }
 
-  const calorieGoal = profile?.daily_calorie_goal ?? 2100;
+  const calorieGoal = getCalorieGoal(profile);
   const caloriesConsumed = nutrition?.calories_consumed ?? 0;
   const caloriePercent = Math.min((caloriesConsumed / calorieGoal) * 100, 100);
-  const waterCups = water?.water_cups ?? 0;
-  const waterGoal = water?.water_goal ?? 8;
+  const waterMl = water?.water_ml ?? 0;
+  const waterGoalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
+  const macroGoals = getMacroGoals(profile);
   const goalInfo = FITNESS_GOALS.find(g => g.key === profile?.fitness_goal);
 
   return (
@@ -557,7 +555,14 @@ export default function ProfileScreen({ userId, onAvatarUpdated }: Props) {
 
         {/* ─── Dinh Dưỡng ─── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dinh Dưỡng Hôm Nay</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Dinh Dưỡng Hôm Nay</Text>
+            {onNavigateToNutrition && (
+              <TouchableOpacity onPress={onNavigateToNutrition}>
+                <Text style={styles.linkText}>Chi tiết →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <View style={styles.nutritionCard}>
             <View style={styles.nutritionHeader}>
               <Text style={styles.nutritionCalories}>{caloriesConsumed} <Text style={styles.nutritionCalUnit}>kcal</Text></Text>
@@ -566,42 +571,24 @@ export default function ProfileScreen({ userId, onAvatarUpdated }: Props) {
             <View style={styles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${caloriePercent}%` }]} />
             </View>
-            <View style={styles.macroRow}>
-              {[
-                { label: 'Đạm', value: nutrition?.protein_g ?? 0, color: '#c6f333' },
-                { label: 'Carbs', value: nutrition?.carbs_g ?? 0, color: '#64b5f6' },
-                { label: 'Béo', value: nutrition?.fat_g ?? 0, color: '#ffb74d' },
-              ].map(m => (
-                <View key={m.label} style={styles.macroItem}>
-                  <View style={[styles.macroDot, { backgroundColor: m.color }]} />
-                  <Text style={styles.macroLabel}>{m.label}</Text>
-                  <Text style={styles.macroValue}>{m.value}g</Text>
-                </View>
-              ))}
-            </View>
+            <MacroChart
+              protein={nutrition?.protein_g ?? 0}
+              carbs={nutrition?.carbs_g ?? 0}
+              fat={nutrition?.fat_g ?? 0}
+              proteinGoal={macroGoals.protein_g}
+              carbsGoal={macroGoals.carbs_g}
+              fatGoal={macroGoals.fat_g}
+            />
           </View>
         </View>
 
         {/* ─── Lượng Nước ─── */}
         <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Nước Hôm Nay</Text>
-            <Text style={styles.waterCount}>{waterCups}/{waterGoal} cốc</Text>
-          </View>
-          <View style={styles.waterCard}>
-            <View style={styles.waterCupsRow}>
-              {Array.from({ length: waterGoal }).map((_, i) => (
-                <TouchableOpacity key={i} onPress={handleAddWaterCup} activeOpacity={0.7}>
-                  <MaterialIcons
-                    name={i < waterCups ? 'water-drop' : 'water'}
-                    size={28}
-                    color={i < waterCups ? '#64b5f6' : colors.onSurfaceVariant}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.waterHint}>Bấm vào biểu tượng để thêm cốc nước</Text>
-          </View>
+          <WaterTracker
+            waterMl={waterMl}
+            waterGoalMl={waterGoalMl}
+            onAddWater={handleAddWater}
+          />
         </View>
 
         {/* ─── Sign Out ─── */}
@@ -714,6 +701,7 @@ const styles = StyleSheet.create({
   section: { marginHorizontal: 16, marginBottom: 16 },
   sectionTitle: { fontFamily: 'Montserrat-Bold', fontSize: 16, color: colors.onSurface, marginBottom: 10 },
   sectionTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  linkText: { fontFamily: 'Inter-Medium', fontSize: 13, color: colors.primaryFixed },
 
   // ── Course ──
   courseCard: {

@@ -9,15 +9,14 @@ import type { Session } from '@supabase/supabase-js';
 import Header from './src/components/Header';
 import WorkoutCard from './src/components/WorkoutCard';
 import StatsGrid from './src/components/StatsGrid';
-import BottomNav from './src/components/BottomNav';
+import BottomNav, { type Tab } from './src/components/BottomNav';
 import LoginScreen from './src/screens/LoginScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import NutritionScreen from './src/screens/NutritionScreen';
 import { colors } from './src/theme/colors';
 import { supabase } from './utils/supabase';
+import { syncWaterRemindersOnLaunch } from './src/services/waterReminderService';
 
-type Tab = 'home' | 'training' | 'progress' | 'profile';
-
-// memo prevents re-render when SafeAreaProvider updates insets
 const MemoLoginScreen = memo(LoginScreen);
 
 export default function App() {
@@ -40,7 +39,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch avatar when session changes
   useEffect(() => {
     if (session?.user.id) {
       supabase
@@ -51,11 +49,16 @@ export default function App() {
         .then(({ data }) => {
           if (data?.avatar_url) setAvatarUrl(data.avatar_url);
         });
+      syncWaterRemindersOnLaunch(session.user.id).catch(console.error);
     }
   }, [session?.user.id]);
 
   const handleAvatarUpdated = useCallback((url: string) => {
     setAvatarUrl(url);
+  }, []);
+
+  const handleNavigateToNutrition = useCallback(() => {
+    setActiveTab('nutrition');
   }, []);
 
   const [fontsLoaded] = useFonts({
@@ -67,14 +70,30 @@ export default function App() {
     'Montserrat-ExtraBold': Montserrat_800ExtraBold,
   });
 
+  const userId = session?.user?.id ?? null;
+
   const renderScreen = () => {
+    if (!userId) return null;
     switch (activeTab) {
       case 'profile':
         return (
           <ProfileScreen
-            userId={session!.user.id}
+            userId={userId}
             onAvatarUpdated={handleAvatarUpdated}
+            onNavigateToNutrition={handleNavigateToNutrition}
           />
+        );
+      case 'nutrition':
+        return <NutritionScreen userId={userId} />;
+      case 'training':
+        return (
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeTitle}>Phòng Tập</Text>
+              <Text style={styles.welcomeSub}>Thư viện bài tập sẽ được cập nhật sớm.</Text>
+            </View>
+            <WorkoutCard />
+          </ScrollView>
         );
       default:
         return (
@@ -84,24 +103,20 @@ export default function App() {
               <Text style={styles.welcomeSub}>Sẵn sàng để vượt qua giới hạn hôm nay chứ?</Text>
             </View>
             <WorkoutCard />
-            <StatsGrid />
+            <StatsGrid userId={userId} onNavigateToNutrition={handleNavigateToNutrition} />
           </ScrollView>
         );
     }
   };
 
-  // SafeAreaProvider is THE SINGLE ROOT — never unmounts, never remounts
-  // This prevents the keyboard-dismiss bug caused by context updates
   return (
     <SafeAreaProvider>
       {!fontsLoaded || !isReady ? null : !session ? (
-        // ─── Login (no SafeAreaView needed, LoginScreen handles its own padding) ───
         <>
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           <MemoLoginScreen />
         </>
       ) : (
-        // ─── Main App ───
         <SafeAreaView style={styles.container} edges={['top']}>
           <StatusBar barStyle="light-content" backgroundColor={colors.surface} translucent={false} />
           <Header
@@ -109,7 +124,7 @@ export default function App() {
             onAvatarPress={() => setActiveTab('profile')}
           />
           <View style={styles.body}>
-            {renderScreen()}
+            {userId ? renderScreen() : null}
           </View>
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
         </SafeAreaView>

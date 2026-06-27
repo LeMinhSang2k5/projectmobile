@@ -1,116 +1,113 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import Svg, { Circle } from 'react-native-svg';
 import { colors } from '../theme/colors';
+import MacroChart, { CalorieRing } from './MacroChart';
+import WaterTracker from './WaterTracker';
+import { getProfile, getCalorieGoal, getWaterGoalMl } from '../services/healthService';
+import { getDailyNutrition } from '../services/nutritionService';
+import { getTodayWater, addWater } from '../services/waterService';
+import type { DailyNutrition, DailyWaterIntake, Profile } from '../types';
 
-const CircularProgress = ({ value, maxValue, label, sublabel }: any) => {
-  const radius = 48;
-  const strokeWidth = 8;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (value / maxValue) * circumference;
-
-  return (
-    <View style={styles.circularContainer}>
-      <Svg width={120} height={120}>
-        <Circle
-          cx="60"
-          cy="60"
-          r={radius}
-          stroke={colors.surfaceVariant}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-        <Circle
-          cx="60"
-          cy="60"
-          r={radius}
-          stroke={colors.primaryFixed}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          fill="transparent"
-          rotation="-90"
-          origin="60, 60"
-        />
-      </Svg>
-      <View style={styles.circularTextContainer}>
-        <Text style={styles.circularValue}>{value}</Text>
-        <Text style={styles.circularLabel}>{sublabel}</Text>
-      </View>
-    </View>
-  );
+type Props = {
+  userId: string;
+  onNavigateToNutrition?: () => void;
 };
 
-export default function StatsGrid() {
-  const [waterCups, setWaterCups] = useState(5);
+const today = new Date().toISOString().split('T')[0];
 
-  const addWater = () => {
-    if (waterCups < 8) setWaterCups(waterCups + 1);
+export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [nutrition, setNutrition] = useState<DailyNutrition | null>(null);
+  const [water, setWater] = useState<DailyWaterIntake | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const prof = await getProfile(userId);
+      setProfile(prof);
+      const [nutritionData, waterData] = await Promise.all([
+        getDailyNutrition(userId, today),
+        getTodayWater(userId, prof, today),
+      ]);
+      setNutrition(nutritionData);
+      setWater(waterData);
+    } catch (err) {
+      console.error('StatsGrid fetch error:', err);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAddWater = async (ml: number) => {
+    try {
+      const updated = await addWater(userId, ml, profile, today);
+      setWater(updated);
+    } catch (err) {
+      console.error('Add water error:', err);
+    }
   };
+
+  const calorieGoal = getCalorieGoal(profile);
+  const caloriesConsumed = nutrition?.calories_consumed ?? 0;
+  const waterMl = water?.water_ml ?? 0;
+  const waterGoalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
+  const wakeupTime = profile?.wakeup_time ?? '06:30';
 
   return (
     <View style={styles.container}>
-      {/* Alarm Widget */}
       <View style={[styles.card, styles.alarmCard]}>
         <View style={styles.iconCircle}>
           <MaterialIcons name="alarm" size={28} color={colors.primaryFixed} />
         </View>
         <View style={styles.alarmTextContainer}>
           <Text style={styles.alarmLabel}>BÁO THỨC TẬP LUYỆN</Text>
-          <Text style={styles.alarmTime}>06:30 AM</Text>
-          <Text style={styles.alarmSub}>Sau 8 giờ nữa</Text>
+          <Text style={styles.alarmTime}>{wakeupTime}</Text>
+          <Text style={styles.alarmSub}>Cài đặt trong Profile</Text>
         </View>
-        <TouchableOpacity style={styles.btnSecondary} activeOpacity={0.7}>
-          <Text style={styles.btnSecondaryText}>Cài đặt lại</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Food Tracking */}
-      <View style={[styles.card, styles.foodCard]}>
-        <CircularProgress value={1420} maxValue={2100} label="1,420" sublabel="kcal" />
+      <TouchableOpacity
+        style={[styles.card, styles.foodCard]}
+        activeOpacity={0.85}
+        onPress={onNavigateToNutrition}
+      >
+        <CalorieRing value={caloriesConsumed} maxValue={calorieGoal} />
         <View style={styles.foodDetails}>
           <Text style={styles.foodTitle}>DINH DƯỠNG</Text>
-          
           <View style={styles.foodRow}>
             <Text style={styles.foodRowLabel}>Mục tiêu</Text>
-            <Text style={styles.foodRowValue}>2,100</Text>
+            <Text style={styles.foodRowValue}>{calorieGoal}</Text>
           </View>
           <View style={styles.foodRow}>
             <Text style={styles.foodRowLabel}>Đã nạp</Text>
-            <Text style={[styles.foodRowValue, { color: colors.primaryFixed }]}>1,420</Text>
+            <Text style={[styles.foodRowValue, { color: colors.primaryFixed }]}>{caloriesConsumed}</Text>
           </View>
           <View style={styles.foodRow}>
             <Text style={styles.foodRowLabel}>Còn lại</Text>
-            <Text style={styles.foodRowValue}>680</Text>
+            <Text style={styles.foodRowValue}>{Math.max(0, calorieGoal - caloriesConsumed)}</Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
-      {/* Water Intake */}
-      <View style={[styles.card, styles.waterCard]}>
-        <View style={styles.waterHeader}>
-          <View>
-            <Text style={styles.waterTitle}>LƯỢNG NƯỚC</Text>
-            <Text style={styles.waterCount}><Text style={{color: colors.primaryFixed}}>{waterCups}</Text>/8 cốc</Text>
-          </View>
-          <MaterialIcons name="water-drop" size={32} color={colors.primaryFixed} />
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.waterCupsContainer}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <View key={i} style={[styles.cup, i < waterCups ? styles.cupFilled : null]}>
-              <View style={[styles.cupInner, i < waterCups ? styles.cupInnerFilled : null]} />
-            </View>
-          ))}
-        </ScrollView>
+      <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
+        <WaterTracker
+          waterMl={waterMl}
+          waterGoalMl={waterGoalMl}
+          onAddWater={handleAddWater}
+          compact
+        />
+      </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={addWater}>
-          <MaterialIcons name="add" size={20} color={colors.onPrimaryFixed} />
-          <Text style={styles.btnPrimaryText}>Thêm một cốc</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.macroLink} onPress={onNavigateToNutrition}>
+        <MacroChart
+          protein={nutrition?.protein_g ?? 0}
+          carbs={nutrition?.carbs_g ?? 0}
+          fat={nutrition?.fat_g ?? 0}
+        />
+        <Text style={styles.macroLinkText}>Xem chi tiết dinh dưỡng →</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -156,46 +153,14 @@ const styles = StyleSheet.create({
   },
   alarmSub: {
     fontFamily: 'Inter-Medium',
-    fontSize: 16,
+    fontSize: 14,
     color: colors.primaryFixed,
     marginTop: 4,
-  },
-  btnSecondary: {
-    backgroundColor: colors.surfaceVariant,
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  btnSecondaryText: {
-    color: colors.onSurface,
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
   },
   foodCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
-  },
-  circularContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circularTextContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  circularValue: {
-    fontFamily: 'Montserrat-Bold',
-    fontSize: 24,
-    color: colors.onSurface,
-  },
-  circularLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
   },
   foodDetails: {
     flex: 1,
@@ -222,67 +187,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.onSurface,
   },
-  waterCard: {
+  macroLink: {
+    backgroundColor: colors.glass,
+    borderColor: colors.glassBorder,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
   },
-  waterHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  macroLinkText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: colors.primaryFixed,
+    textAlign: 'center',
+    marginTop: 12,
   },
-  waterTitle: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    color: colors.onSurfaceVariant,
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  waterCount: {
-    fontFamily: 'Montserrat-Bold',
-    fontSize: 24,
-    color: colors.onSurface,
-  },
-  waterCupsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 24,
-    marginBottom: 24,
-  },
-  cup: {
-    width: 32,
-    height: 40,
-    borderWidth: 2,
-    borderColor: colors.outlineVariant,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
-    alignItems: 'center',
-  },
-  cupFilled: {
-    borderColor: colors.primaryFixed,
-    backgroundColor: 'rgba(198, 243, 51, 0.1)',
-  },
-  cupInner: {
-    width: '100%',
-    height: '50%',
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-  },
-  cupInnerFilled: {
-    backgroundColor: 'rgba(198, 243, 51, 0.5)',
-  },
-  btnPrimary: {
-    backgroundColor: colors.primaryFixed,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  btnPrimaryText: {
-    color: colors.onPrimaryFixed,
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-  }
 });

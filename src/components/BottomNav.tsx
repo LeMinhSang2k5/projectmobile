@@ -3,17 +3,17 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
-type Tab = 'home' | 'training' | 'progress' | 'profile';
+export type Tab = 'home' | 'training' | 'nutrition' | 'profile';
 
 type Props = {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
 };
 
-const NAV_ITEMS: { key: Tab; icon: any; label: string }[] = [
+const NAV_ITEMS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap; label: string }[] = [
   { key: 'home', icon: 'dashboard', label: 'Home' },
   { key: 'training', icon: 'fitness-center', label: 'Training' },
-  { key: 'progress', icon: 'insights', label: 'Progress' },
+  { key: 'nutrition', icon: 'restaurant', label: 'Nutrition' },
   { key: 'profile', icon: 'person', label: 'Profile' },
 ];
 
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   navItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     flex: 1,
   },
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primaryFixed,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
     flex: 1,
@@ -85,13 +85,13 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 11,
+    fontSize: 10,
     color: colors.onSurfaceVariant,
     marginTop: 2,
   },
   navTextActive: {
     fontFamily: 'Inter-Bold',
-    fontSize: 11,
+    fontSize: 10,
     color: colors.onPrimaryFixed,
     marginTop: 2,
   },
