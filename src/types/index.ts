@@ -24,6 +24,10 @@ export type Profile = {
   fat_goal_g: number | null;
   water_goal_ml: number | null;
   water_reminder_enabled: boolean | null;
+  workout_reminder_enabled: boolean | null;
+  badge_notifications_enabled: boolean | null;
+  onboarding_completed: boolean;
+  updated_at?: string;
 };
 
 export type Program = {
@@ -42,6 +46,7 @@ export type Exercise = {
   duration: number;
   met_value: number;
   media_url: string | null;
+  sort_order?: number;
   created_at: string;
 };
 
@@ -58,6 +63,7 @@ export type UserStreak = {
   id: string;
   user_id: string;
   current_streak: number;
+  longest_streak: number;
   last_workout_date: string | null;
   updated_at: string;
 };
@@ -155,3 +161,53 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
 
 export const DEFAULT_CALORIE_GOAL = 2100;
 export const DEFAULT_WATER_GOAL_ML = 2000;
+
+export type Badge = {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  icon: string;
+  criteria_type: string;
+  criteria_value: number;
+  sort_order: number;
+};
+
+export type UserBadge = {
+  id: string;
+  user_id: string;
+  badge_id: string;
+  earned_at: string;
+  badges?: Badge;
+};
+
+export type BadgeWithStatus = Badge & {
+  earned: boolean;
+  earned_at: string | null;
+};
+
+export type WeeklyWorkoutDay = {
+  date: string;
+  workouts: number;
+  calories_burned: number;
+};
+
+export type DashboardSummary = {
+  display_name: string | null;
+  current_streak: number;
+  longest_streak: number;
+  calories_burned_today: number;
+  workouts_today: number;
+  weekly_workouts: WeeklyWorkoutDay[];
+  wakeup_time: string;
+  water_reminder_enabled: boolean;
+  workout_reminder_enabled: boolean;
+  badge_notifications_enabled: boolean;
+};
+
+export type NotificationPreferences = {
+  water_reminder_enabled: boolean;
+  workout_reminder_enabled: boolean;
+  badge_notifications_enabled: boolean;
+  wakeup_time: string;
+};

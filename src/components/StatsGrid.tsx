@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import GlassCard from './ui/GlassCard';
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/layout';
 import MacroChart, { CalorieRing } from './MacroChart';
 import WaterTracker from './WaterTracker';
 import { supabase } from '../../utils/supabase';
@@ -9,15 +11,21 @@ import { getProfile, getCalorieGoal, getWaterGoalMl } from '../services/healthSe
 import { getDailyNutrition } from '../services/nutritionService';
 import { getTodayWater, addWater } from '../services/waterService';
 import type { DailyNutrition, DailyWaterIntake, Profile } from '../types';
+import { toLocalDateString } from '../lib/dateUtils';
 
 type Props = {
   userId: string;
   onNavigateToNutrition?: () => void;
+  refreshKey?: number;
+  showStreak?: boolean;
 };
 
-const today = new Date().toISOString().split('T')[0];
-
-export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
+export default function StatsGrid({
+  userId,
+  onNavigateToNutrition,
+  refreshKey = 0,
+  showStreak = false,
+}: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [nutrition, setNutrition] = useState<DailyNutrition | null>(null);
   const [water, setWater] = useState<DailyWaterIntake | null>(null);
@@ -25,16 +33,19 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
 
   const fetchData = useCallback(async () => {
     try {
+      const today = toLocalDateString();
       const prof = await getProfile(userId);
       setProfile(prof);
       const [nutritionData, waterData, streakResult] = await Promise.all([
         getDailyNutrition(userId, today),
         getTodayWater(userId, prof, today),
-        supabase
-          .from('user_streaks')
-          .select('current_streak')
-          .eq('user_id', userId)
-          .maybeSingle(),
+        showStreak
+          ? supabase
+              .from('user_streaks')
+              .select('current_streak')
+              .eq('user_id', userId)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
       ]);
       setNutrition(nutritionData);
       setWater(waterData);
@@ -42,7 +53,7 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
     } catch (err) {
       console.error('StatsGrid fetch error:', err);
     }
-  }, [userId]);
+  }, [userId, refreshKey, showStreak]);
 
   useEffect(() => {
     fetchData();
@@ -50,7 +61,7 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
 
   const handleAddWater = async (ml: number) => {
     try {
-      const updated = await addWater(userId, ml, profile, today);
+      const updated = await addWater(userId, ml, profile, toLocalDateString());
       setWater(updated);
     } catch (err) {
       console.error('Add water error:', err);
@@ -65,46 +76,48 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.card, styles.streakCard]}>
-        <View style={styles.streakInfo}>
-          <Text style={styles.streakLabel}>CHUỖI NGÀY TẬP</Text>
-          <Text style={styles.streakValue}>{streak} Ngày</Text>
-        </View>
-        <MaterialIcons name="local-fire-department" size={40} color={colors.primaryFixed} />
-      </View>
+      {showStreak ? (
+        <GlassCard variant="accent" style={styles.streakCard} padding={spacing.xl}>
+          <View style={styles.streakInfo}>
+            <Text style={styles.streakLabel}>CHUỖI NGÀY TẬP</Text>
+            <Text style={styles.streakValue}>{streak} Ngày</Text>
+          </View>
+          <MaterialIcons name="local-fire-department" size={40} color={colors.primaryFixed} />
+        </GlassCard>
+      ) : null}
 
-      <View style={[styles.card, styles.alarmCard]}>
-        <View style={styles.iconCircle}>
-          <MaterialIcons name="alarm" size={28} color={colors.primaryFixed} />
+      <GlassCard padding={spacing.xl}>
+        <View style={styles.alarmRow}>
+          <View style={styles.iconCircle}>
+            <MaterialIcons name="alarm" size={24} color={colors.primaryFixed} />
+          </View>
+          <View style={styles.alarmTextContainer}>
+            <Text style={styles.alarmLabel}>BÁO THỨC TẬP LUYỆN</Text>
+            <Text style={styles.alarmTime}>{wakeupTime}</Text>
+            <Text style={styles.alarmSub}>Cài đặt trong Profile</Text>
+          </View>
         </View>
-        <View style={styles.alarmTextContainer}>
-          <Text style={styles.alarmLabel}>BÁO THỨC TẬP LUYỆN</Text>
-          <Text style={styles.alarmTime}>{wakeupTime}</Text>
-          <Text style={styles.alarmSub}>Cài đặt trong Profile</Text>
-        </View>
-      </View>
+      </GlassCard>
 
-      <TouchableOpacity
-        style={[styles.card, styles.foodCard]}
-        activeOpacity={0.85}
-        onPress={onNavigateToNutrition}
-      >
-        <CalorieRing value={caloriesConsumed} maxValue={calorieGoal} />
-        <View style={styles.foodDetails}>
-          <Text style={styles.foodTitle}>DINH DƯỠNG</Text>
-          <View style={styles.foodRow}>
-            <Text style={styles.foodRowLabel}>Mục tiêu</Text>
-            <Text style={styles.foodRowValue}>{calorieGoal}</Text>
+      <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
+        <GlassCard style={styles.foodCard} padding={spacing.xl}>
+          <CalorieRing value={caloriesConsumed} maxValue={calorieGoal} />
+          <View style={styles.foodDetails}>
+            <Text style={styles.foodTitle}>DINH DƯỠNG</Text>
+            <View style={styles.foodRow}>
+              <Text style={styles.foodRowLabel}>Mục tiêu</Text>
+              <Text style={styles.foodRowValue}>{calorieGoal}</Text>
+            </View>
+            <View style={styles.foodRow}>
+              <Text style={styles.foodRowLabel}>Đã nạp</Text>
+              <Text style={[styles.foodRowValue, { color: colors.primaryFixed }]}>{caloriesConsumed}</Text>
+            </View>
+            <View style={styles.foodRow}>
+              <Text style={styles.foodRowLabel}>Còn lại</Text>
+              <Text style={styles.foodRowValue}>{Math.max(0, calorieGoal - caloriesConsumed)}</Text>
+            </View>
           </View>
-          <View style={styles.foodRow}>
-            <Text style={styles.foodRowLabel}>Đã nạp</Text>
-            <Text style={[styles.foodRowValue, { color: colors.primaryFixed }]}>{caloriesConsumed}</Text>
-          </View>
-          <View style={styles.foodRow}>
-            <Text style={styles.foodRowLabel}>Còn lại</Text>
-            <Text style={styles.foodRowValue}>{Math.max(0, calorieGoal - caloriesConsumed)}</Text>
-          </View>
-        </View>
+        </GlassCard>
       </TouchableOpacity>
 
       <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
@@ -116,13 +129,15 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
         />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.macroLink} onPress={onNavigateToNutrition}>
-        <MacroChart
-          protein={nutrition?.protein_g ?? 0}
-          carbs={nutrition?.carbs_g ?? 0}
-          fat={nutrition?.fat_g ?? 0}
-        />
-        <Text style={styles.macroLinkText}>Xem chi tiết dinh dưỡng →</Text>
+      <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
+        <GlassCard padding={spacing.lg}>
+          <MacroChart
+            protein={nutrition?.protein_g ?? 0}
+            carbs={nutrition?.carbs_g ?? 0}
+            fat={nutrition?.fat_g ?? 0}
+          />
+          <Text style={styles.macroLinkText}>Xem chi tiết dinh dưỡng</Text>
+        </GlassCard>
       </TouchableOpacity>
     </View>
   );
@@ -130,22 +145,12 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
-    paddingBottom: 20,
-  },
-  card: {
-    backgroundColor: colors.glass,
-    borderColor: colors.glassBorder,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 24,
+    gap: spacing.lg,
   },
   streakCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(198, 243, 51, 0.1)',
-    borderColor: colors.primaryFixed,
   },
   streakInfo: {
     flex: 1,
@@ -162,9 +167,10 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     marginTop: 4,
   },
-  alarmCard: {
+  alarmRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.lg,
   },
   iconCircle: {
     width: 48,
@@ -175,7 +181,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   alarmTextContainer: {
-    alignItems: 'center',
+    flex: 1,
   },
   alarmLabel: {
     fontFamily: 'Inter-Medium',
@@ -198,7 +204,7 @@ const styles = StyleSheet.create({
   foodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: spacing.xl,
   },
   foodDetails: {
     flex: 1,
@@ -225,18 +231,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.onSurface,
   },
-  macroLink: {
-    backgroundColor: colors.glass,
-    borderColor: colors.glassBorder,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-  },
   macroLinkText: {
     fontFamily: 'Inter-Medium',
     fontSize: 13,
     color: colors.primaryFixed,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: spacing.md,
   },
 });

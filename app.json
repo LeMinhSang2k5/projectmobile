@@ -31,7 +31,8 @@
           "icon": "./assets/icon.png",
           "color": "#c6f333"
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }

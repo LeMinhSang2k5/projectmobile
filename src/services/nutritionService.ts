@@ -3,14 +3,14 @@ import type {
   DailyNutrition,
   Food,
   MealItem,
-  MealLog,
   MealLogWithItems,
   MealType,
   SuggestedMealItem,
   SuggestedMeals,
 } from '../types';
+import { toLocalDateString } from '../lib/dateUtils';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => toLocalDateString();
 
 export async function searchFoods(query: string, limit = 20): Promise<Food[]> {
   const trimmed = query.trim();
@@ -26,50 +26,6 @@ export async function searchFoods(query: string, limit = 20): Promise<Food[]> {
   return (data ?? []) as Food[];
 }
 
-export async function getFoodById(foodId: string): Promise<Food | null> {
-  const { data, error } = await supabase
-    .from('foods')
-    .select('*')
-    .eq('id', foodId)
-    .maybeSingle();
-  if (error) throw error;
-  return data as Food | null;
-}
-
-export async function getOrCreateMealLog(
-  userId: string,
-  date: string,
-  mealType: MealType,
-): Promise<MealLog> {
-  const { data: existing } = await supabase
-    .from('meal_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('date', date)
-    .eq('meal_type', mealType)
-    .maybeSingle();
-
-  if (existing) return existing as MealLog;
-
-  const { data, error } = await supabase
-    .from('meal_logs')
-    .insert({ user_id: userId, date, meal_type: mealType })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as MealLog;
-}
-
-function scaleNutrients(food: Food, quantity: number) {
-  return {
-    calories: Math.round(food.calories * quantity),
-    protein_g: Math.round(food.protein_g * quantity),
-    carbs_g: Math.round(food.carbs_g * quantity),
-    fat_g: Math.round(food.fat_g * quantity),
-  };
-}
-
 export async function addMealItem(
   userId: string,
   date: string,
@@ -77,27 +33,15 @@ export async function addMealItem(
   foodId: string,
   quantity: number,
 ): Promise<MealItem> {
-  if (quantity <= 0) throw new Error('Khẩu phần phải lớn hơn 0');
-
-  const food = await getFoodById(foodId);
-  if (!food) throw new Error('Không tìm thấy món ăn');
-
-  const mealLog = await getOrCreateMealLog(userId, date, mealType);
-  const nutrients = scaleNutrients(food, quantity);
-
-  const { data, error } = await supabase
-    .from('meal_items')
-    .insert({
-      meal_log_id: mealLog.id,
-      food_id: foodId,
-      quantity,
-      ...nutrients,
-    })
-    .select()
-    .single();
+  if (!userId) throw new Error('Bạn cần đăng nhập để thêm món ăn');
+  const { data, error } = await supabase.rpc('add_meal_item_atomic', {
+    p_date: date,
+    p_meal_type: mealType,
+    p_food_id: foodId,
+    p_quantity: quantity,
+  });
 
   if (error) throw error;
-  await recalcDailyNutrition(userId, date);
   return data as MealItem;
 }
 
@@ -106,9 +50,11 @@ export async function removeMealItem(
   itemId: string,
   date: string,
 ): Promise<void> {
-  const { error } = await supabase.from('meal_items').delete().eq('id', itemId);
+  if (!userId || !date) throw new Error('Dữ liệu xóa món không hợp lệ');
+  const { error } = await supabase.rpc('remove_meal_item_atomic', {
+    p_item_id: itemId,
+  });
   if (error) throw error;
-  await recalcDailyNutrition(userId, date);
 }
 
 export async function getMealsByDate(
@@ -138,51 +84,6 @@ export async function getDailyNutrition(
     .maybeSingle();
   if (error) throw error;
   return data as DailyNutrition | null;
-}
-
-export async function recalcDailyNutrition(
-  userId: string,
-  date: string,
-): Promise<DailyNutrition | null> {
-  const meals = await getMealsByDate(userId, date);
-  const totals = meals.reduce(
-    (acc, meal) => {
-      for (const item of meal.meal_items ?? []) {
-        acc.calories_consumed += item.calories ?? 0;
-        acc.protein_g += item.protein_g ?? 0;
-        acc.carbs_g += item.carbs_g ?? 0;
-        acc.fat_g += item.fat_g ?? 0;
-      }
-      return acc;
-    },
-    { calories_consumed: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-  );
-
-  const { data: existing } = await supabase
-    .from('daily_nutrition')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('date', date)
-    .maybeSingle();
-
-  if (existing) {
-    const { data, error } = await supabase
-      .from('daily_nutrition')
-      .update(totals)
-      .eq('id', existing.id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as DailyNutrition;
-  }
-
-  const { data, error } = await supabase
-    .from('daily_nutrition')
-    .insert({ user_id: userId, date, ...totals })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DailyNutrition;
 }
 
 const SUGGESTION_SPLIT: Record<'breakfast' | 'lunch' | 'dinner', number> = {

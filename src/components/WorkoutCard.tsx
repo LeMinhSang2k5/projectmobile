@@ -41,12 +41,11 @@ export default function WorkoutCard() {
 const styles = StyleSheet.create({
   container: {
     height: 220,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: colors.glass,
     borderColor: colors.glassBorder,
     borderWidth: 1,
-    marginVertical: 12,
   },
   imageBackground: {
     width: '100%',

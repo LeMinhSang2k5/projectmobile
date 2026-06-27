@@ -71,7 +71,9 @@ export function calculateBMR(
   if (weight_kg <= 0 || height_cm <= 0 || age <= 0) return 0;
   const base = 10 * weight_kg + 6.25 * height_cm - 5 * age;
   if (gender === 'female') return round0(base - 161);
-  return round0(base + 5);
+  if (gender === 'male') return round0(base + 5);
+  // Neutral midpoint when the user does not choose a binary formula.
+  return round0(base - 78);
 }
 
 export function calculateTDEE(bmr: number, activity_level: ActivityLevel): number {

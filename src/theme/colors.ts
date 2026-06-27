@@ -5,10 +5,14 @@ export const colors = {
   onSurfaceVariant: '#c4c9ae',
   primaryFixed: '#c6f333',
   onPrimaryFixed: '#161e00',
-  primaryContainer: '#c6f333', // fallback or alias
+  primaryContainer: '#c6f333',
   onPrimaryContainer: '#566d00',
-  glass: 'rgba(44, 44, 46, 0.6)',
-  glassBorder: 'rgba(58, 58, 60, 0.5)',
+  glass: 'rgba(36, 38, 38, 0.72)',
+  glassBorder: 'rgba(198, 243, 51, 0.12)',
+  glassHighlight: 'rgba(255, 255, 255, 0.06)',
   outlineVariant: '#444934',
-  surfaceContainerHigh: '#282a2b',
+  surfaceContainerHigh: '#1e2020',
+  surfaceElevated: '#181a1a',
+  accentMuted: 'rgba(198, 243, 51, 0.12)',
+  danger: '#ff6b6b',
 };

@@ -128,7 +128,14 @@ export default function ProgramsScreen({ onSelectProgram }: Props) {
       />
       <View style={styles.programOverlay} />
       <View style={styles.programInfo}>
-        <View style={[styles.levelBadge, styles[`level${program.level}` as keyof typeof styles] || styles.levelBeginner]}>
+        <View style={[
+          styles.levelBadge,
+          program.level === 'Advanced'
+            ? styles.levelAdvanced
+            : program.level === 'Intermediate'
+              ? styles.levelIntermediate
+              : styles.levelBeginner,
+        ]}>
           <Text style={styles.levelText}>{program.level}</Text>
         </View>
         <Text style={styles.programTitle}>{program.title}</Text>

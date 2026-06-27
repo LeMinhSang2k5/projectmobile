@@ -1,5 +1,9 @@
 import { supabase } from '../../utils/supabase';
 import { Program, Exercise } from '../types';
+import { toLocalDateString } from './dateUtils';
+import { calculateCalories } from './workoutCalculations';
+
+export { calculateCalories } from './workoutCalculations';
 
 const MOCK_PROGRAMS: Program[] = [
   {
@@ -48,63 +52,38 @@ export const fetchExercisesByProgram = async (programId: string): Promise<Exerci
     ];
   }
 
-  const { data } = await supabase.from('exercises').select('*').eq('program_id', programId);
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('*')
+    .eq('program_id', programId)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
   return (data as Exercise[]) || [];
 };
 
-export const calculateCalories = (met: number, weightKg: number, durationSeconds: number): number => {
-  return Math.round((met * 3.5 * weightKg / 200) * (durationSeconds / 60) * 100) / 100;
-};
-
-const todayString = () => new Date().toISOString().split('T')[0];
-
-const yesterdayString = () =>
-  new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-export const updateUserStreak = async (userId: string): Promise<number> => {
-  const today = todayString();
-  const yesterday = yesterdayString();
-
-  const { data: existing } = await supabase
-    .from('user_streaks')
-    .select('current_streak, last_workout_date')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (!existing) {
-    await supabase.from('user_streaks').insert({
-      user_id: userId,
-      current_streak: 1,
-      last_workout_date: today,
-    });
-    return 1;
-  }
-
-  if (existing.last_workout_date === today) {
-    return existing.current_streak;
-  }
-
-  const newStreak =
-    existing.last_workout_date === yesterday ? existing.current_streak + 1 : 1;
-
-  await supabase
-    .from('user_streaks')
-    .update({
-      current_streak: newStreak,
-      last_workout_date: today,
-    })
-    .eq('user_id', userId);
-
-  return newStreak;
-};
-
 export const logExercise = async (userId: string, exerciseId: string, calories: number) => {
-  await supabase.from('exercise_logs').insert({
+  if (exerciseId.startsWith('mock-')) return;
+
+  const { error } = await supabase.from('exercise_logs').insert({
     user_id: userId,
     exercise_id: exerciseId,
-    workout_date: todayString(),
+    workout_date: toLocalDateString(),
     calories_burned: calories,
   });
+  if (error) throw error;
+};
 
-  return updateUserStreak(userId);
+export const completeWorkoutSession = async (
+  programId: string,
+  totalCalories: number,
+): Promise<number | null> => {
+  if (programId.startsWith('mock-')) return null;
+
+  const { data, error } = await supabase.rpc('complete_workout_session', {
+    p_program_id: programId,
+    p_workout_date: toLocalDateString(),
+    p_total_calories: totalCalories,
+  });
+  if (error) throw error;
+  return typeof data === 'number' ? data : Number(data ?? 0);
 };

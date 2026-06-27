@@ -7,6 +7,13 @@ import {
   type Gender,
 } from '../lib/healthCalculations';
 import type { Profile } from '../types';
+import { calculateAgeFromDate } from '../lib/dateUtils';
+
+function ageFromProfile(profile: Profile): number | null {
+  if (!profile.date_of_birth) return profile.age;
+  const [year, month, day] = profile.date_of_birth.split('-').map(Number);
+  return calculateAgeFromDate(new Date(year, month - 1, day, 12));
+}
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
@@ -20,12 +27,14 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function recalculateAndSave(userId: string): Promise<Profile | null> {
   const profile = await getProfile(userId);
-  if (!profile || !hasCompleteHealthProfile(profile)) return profile;
+  if (!profile) return null;
+  const currentAge = ageFromProfile(profile);
+  if (!currentAge || !hasCompleteHealthProfile({ ...profile, age: currentAge })) return profile;
 
   const metrics = calculateHealthMetrics({
     weight_kg: profile.weight_kg!,
     height_cm: profile.height_cm!,
-    age: profile.age!,
+    age: currentAge,
     gender: profile.gender as Gender,
     activity_level: profile.activity_level as ActivityLevel,
     fitness_goal: (profile.fitness_goal as FitnessGoal) ?? 'maintain',
@@ -42,6 +51,8 @@ export async function recalculateAndSave(userId: string): Promise<Profile | null
       carbs_goal_g: metrics.macro_targets.carbs_g,
       fat_goal_g: metrics.macro_targets.fat_g,
       water_goal_ml: metrics.water_goal_ml,
+      age: currentAge,
+      updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
     .select()

@@ -79,6 +79,7 @@ const EmailInput = memo(({ value, onChangeText, onSubmitEditing, focused, onFocu
 // PasswordInput
 // ─────────────────────────────────────────────
 type PasswordInputProps = {
+  label?: string;
   value: string;
   onChangeText: (v: string) => void;
   onSubmitEditing: () => void;
@@ -87,11 +88,11 @@ type PasswordInputProps = {
   onFocus: () => void;
   onBlur: () => void;
 };
-const PasswordInput = memo(({ value, onChangeText, onSubmitEditing, inputRef, focused, onFocus, onBlur }: PasswordInputProps) => {
+const PasswordInput = memo(({ label = 'Mật khẩu', value, onChangeText, onSubmitEditing, inputRef, focused, onFocus, onBlur }: PasswordInputProps) => {
   const [show, setShow] = useState(false);
   return (
     <View style={styles.inputGroup}>
-      <Text style={styles.inputLabel}>Password</Text>
+      <Text style={styles.inputLabel}>{label}</Text>
       <View style={[styles.inputWrapper, focused && styles.inputWrapperFocused]}>
         <MaterialIcons
           name="lock" size={20}
@@ -142,9 +143,12 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
   const passwordInputRef = useRef<TextInputType>(null);
+  const confirmPasswordInputRef = useRef<TextInputType>(null);
 
   const handleAuth = useCallback(async () => {
     const finalEmail = email.trim();
@@ -158,36 +162,76 @@ export default function LoginScreen() {
       Alert.alert('Lỗi', 'Địa chỉ email không hợp lệ.');
       return;
     }
-    if (finalPassword.length < 6) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự.');
+    if (!isSignUp && finalPassword.length < 6) {
+      Alert.alert('Lỗi', 'Mật khẩu không hợp lệ.');
       return;
+    }
+    if (isSignUp) {
+      const strongPassword =
+        finalPassword.length >= 8 &&
+        /[A-Z]/.test(finalPassword) &&
+        /[0-9]/.test(finalPassword) &&
+        /[^A-Za-z0-9]/.test(finalPassword);
+      if (!strongPassword) {
+        Alert.alert('Mật khẩu chưa đủ mạnh', 'Cần ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt.');
+        return;
+      }
+      if (finalPassword !== confirmPassword) {
+        Alert.alert('Lỗi', 'Mật khẩu xác nhận chưa khớp.');
+        return;
+      }
     }
 
     setLoading(true);
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email: finalEmail, password: finalPassword });
-      if (error) Alert.alert('Đăng ký thất bại', error.message);
-      else Alert.alert('Thành công', 'Kiểm tra email để xác nhận tài khoản.', [
-        { text: 'OK', onPress: () => setIsSignUp(false) },
-      ]);
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: finalEmail, password: finalPassword });
-      if (error) Alert.alert('Đăng nhập thất bại', error.message);
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email: finalEmail, password: finalPassword });
+        if (error) Alert.alert('Đăng ký thất bại', error.message);
+        else Alert.alert('Thành công', 'Kiểm tra email để xác nhận tài khoản.', [
+          { text: 'OK', onPress: () => setIsSignUp(false) },
+        ]);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: finalEmail, password: finalPassword });
+        if (error) Alert.alert('Đăng nhập thất bại', error.message);
+      }
+    } catch {
+      Alert.alert('Lỗi kết nối', 'Không thể kết nối máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [isSignUp, email, password]);
+  }, [isSignUp, email, password, confirmPassword]);
 
   const focusPassword = useCallback(() => {
     passwordInputRef.current?.focus();
   }, []);
 
+  const focusConfirmPassword = useCallback(() => {
+    confirmPasswordInputRef.current?.focus();
+  }, []);
+
+  const handleForgotPassword = useCallback(async () => {
+    const finalEmail = email.trim();
+    if (!/\S+@\S+\.\S+/.test(finalEmail)) {
+      Alert.alert('Nhập email', 'Hãy nhập email tài khoản trước khi đặt lại mật khẩu.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(finalEmail);
+    setLoading(false);
+    if (error) Alert.alert('Không thể gửi email', error.message);
+    else Alert.alert('Đã gửi email', 'Hãy mở email để tiếp tục đặt lại mật khẩu.');
+  }, [email]);
+
   const handleEmailChange = useCallback((v: string) => setEmail(v), []);
   const handlePasswordChange = useCallback((v: string) => setPassword(v), []);
+  const handleConfirmPasswordChange = useCallback((v: string) => setConfirmPassword(v), []);
 
   const handleEmailFocus = useCallback(() => setEmailFocused(true), []);
   const handleEmailBlur = useCallback(() => setEmailFocused(false), []);
   const handlePasswordFocus = useCallback(() => setPasswordFocused(true), []);
   const handlePasswordBlur = useCallback(() => setPasswordFocused(false), []);
+  const handleConfirmPasswordFocus = useCallback(() => setConfirmPasswordFocused(true), []);
+  const handleConfirmPasswordBlur = useCallback(() => setConfirmPasswordFocused(false), []);
 
   return (
     <View style={styles.root}>
@@ -238,15 +282,27 @@ export default function LoginScreen() {
           <PasswordInput
             value={password}
             onChangeText={handlePasswordChange}
-            onSubmitEditing={handleAuth}
+            onSubmitEditing={isSignUp ? focusConfirmPassword : handleAuth}
             inputRef={passwordInputRef}
             focused={passwordFocused}
             onFocus={handlePasswordFocus}
             onBlur={handlePasswordBlur}
           />
+          {isSignUp && (
+            <PasswordInput
+              label="Xác nhận mật khẩu"
+              value={confirmPassword}
+              onChangeText={handleConfirmPasswordChange}
+              onSubmitEditing={handleAuth}
+              inputRef={confirmPasswordInputRef}
+              focused={confirmPasswordFocused}
+              onFocus={handleConfirmPasswordFocus}
+              onBlur={handleConfirmPasswordBlur}
+            />
+          )}
 
           {!isSignUp && (
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword} disabled={loading}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,21 +10,60 @@ import {
   Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { useEventListener } from 'expo';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { colors } from '../theme/colors';
-import { fetchExercisesByProgram, logExercise, calculateCalories } from '../lib/workoutService';
+import {
+  fetchExercisesByProgram,
+  logExercise,
+  calculateCalories,
+  completeWorkoutSession,
+} from '../lib/workoutService';
+import { getProfile } from '../services/healthService';
 import { Exercise } from '../types';
 
 const { width } = Dimensions.get('window');
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438';
 
+type ExerciseVideoProps = {
+  uri: string;
+  isPaused: boolean;
+  onError: () => void;
+};
+
+function ExerciseVideo({ uri, isPaused, onError }: ExerciseVideoProps) {
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = true;
+    instance.play();
+  });
+
+  useEffect(() => {
+    if (isPaused) player.pause();
+    else player.play();
+  }, [isPaused, player]);
+
+  useEventListener(player, 'statusChange', ({ status }) => {
+    if (status === 'error') onError();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.media}
+      contentFit="contain"
+      nativeControls={false}
+    />
+  );
+}
+
 type Props = {
   programId: string;
   userId: string;
   onClose: () => void;
+  onCompleted?: () => void;
 };
 
-export default function WorkoutDetailScreen({ programId, userId, onClose }: Props) {
+export default function WorkoutDetailScreen({ programId, userId, onClose, onCompleted }: Props) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -35,65 +74,144 @@ export default function WorkoutDetailScreen({ programId, userId, onClose }: Prop
   const [isResting, setIsResting] = useState(false);
   const [totalCalories, setTotalCalories] = useState(0);
   const [mediaError, setMediaError] = useState(false);
+  const [weightKg, setWeightKg] = useState(65);
+  const processingRef = useRef(false);
+  const loggedExerciseIdsRef = useRef(new Set<string>());
 
   const currentExercise = exercises[currentIndex];
   const mediaUrl = currentExercise?.media_url || PLACEHOLDER;
   
-  // Kiểm tra đuôi file để quyết định dùng Image hay Video
-  const isGif = mediaUrl.toLowerCase().includes('.gif') || 
-                mediaUrl.toLowerCase().includes('.webp') ||
-                mediaUrl.includes('giphy.com');
+  const isVideo = /\.(mp4|mov|m3u8|webm)(\?.*)?$/i.test(mediaUrl);
 
-  useEffect(() => { loadExercises(); }, [programId]);
-
-  const loadExercises = async () => {
+  const loadExercises = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setCurrentIndex(0);
+    setTotalCalories(0);
+    setIsResting(false);
+    setIsPaused(false);
+    loggedExerciseIdsRef.current.clear();
     try {
-      const data = await fetchExercisesByProgram(programId);
+      const [data, profile] = await Promise.all([
+        fetchExercisesByProgram(programId),
+        getProfile(userId).catch(() => null),
+      ]);
       if (data && data.length > 0) {
         setExercises(data);
         setTimer(data[0].duration);
+        setWeightKg(profile?.weight_kg && profile.weight_kg > 0 ? profile.weight_kg : 65);
       } else {
         setError('Chương trình chưa có bài tập.');
       }
-    } catch (err) { setError('Lỗi kết nối.'); }
+    } catch {
+      setError('Không thể tải bài tập. Vui lòng kiểm tra kết nối và thử lại.');
+    }
     finally { setLoading(false); }
-  };
+  }, [programId, userId]);
+
+  useEffect(() => { loadExercises(); }, [loadExercises]);
+
+  const finishRest = useCallback(() => {
+    const nextIndex = currentIndex + 1;
+    const nextExercise = exercises[nextIndex];
+    if (!nextExercise) return;
+    setIsResting(false);
+    setCurrentIndex(nextIndex);
+    setTimer(nextExercise.duration);
+    setMediaError(false);
+  }, [currentIndex, exercises]);
+
+  const completeCurrentExercise = useCallback(async () => {
+    if (!currentExercise || processingRef.current) return;
+    processingRef.current = true;
+
+    const calories = calculateCalories(
+      currentExercise.met_value,
+      weightKg,
+      currentExercise.duration,
+    );
+
+    try {
+      const alreadyLogged = loggedExerciseIdsRef.current.has(currentExercise.id);
+      if (!alreadyLogged) {
+        await logExercise(userId, currentExercise.id, calories);
+        loggedExerciseIdsRef.current.add(currentExercise.id);
+      }
+      const newTotal = alreadyLogged
+        ? totalCalories
+        : Math.round((totalCalories + calories) * 100) / 100;
+      setTotalCalories(newTotal);
+
+      if (currentIndex < exercises.length - 1) {
+        setIsResting(true);
+        setTimer(15);
+      } else {
+        const streak = await completeWorkoutSession(programId, newTotal);
+        onCompleted?.();
+        const streakMessage = streak ? ` Chuỗi hiện tại: ${streak} ngày.` : '';
+        Alert.alert(
+          'Hoàn thành!',
+          `Bạn đã đốt cháy ${Math.round(newTotal)} kcal.${streakMessage}`,
+          [{ text: 'Xong', onPress: onClose }],
+        );
+      }
+    } catch (saveError) {
+      setIsPaused(true);
+      const message = saveError instanceof Error ? saveError.message : 'Không thể lưu buổi tập.';
+      Alert.alert('Chưa lưu được kết quả', message, [
+        { text: 'Đóng', style: 'cancel' },
+        { text: 'Thử lại', onPress: () => setIsPaused(false) },
+      ]);
+    } finally {
+      processingRef.current = false;
+    }
+  }, [
+    currentExercise,
+    weightKg,
+    userId,
+    totalCalories,
+    currentIndex,
+    exercises.length,
+    programId,
+    onCompleted,
+    onClose,
+  ]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (!isPaused && timer > 0) {
-      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
-    } else if (timer === 0 && exercises.length > 0) {
-      handleNext();
-    }
-    return () => clearInterval(interval);
+    if (isPaused || timer <= 0) return;
+    const timeout = setTimeout(() => setTimer((previous) => Math.max(0, previous - 1)), 1000);
+    return () => clearTimeout(timeout);
   }, [timer, isPaused]);
 
-  const handleNext = async () => {
-    if (!currentExercise) return;
-    const calories = calculateCalories(currentExercise.met_value, 65, currentExercise.duration);
-    setTotalCalories(prev => prev + calories);
-    try { await logExercise(userId, currentExercise.id, calories); } catch (err) {}
-
-    if (currentIndex < exercises.length - 1) {
-      if (!isResting) {
-        setIsResting(true);
-        setTimer(15); 
-      } else {
-        setIsResting(false);
-        const nextIdx = currentIndex + 1;
-        setCurrentIndex(nextIdx);
-        setTimer(exercises[nextIdx].duration);
-        setMediaError(false);
-      }
-    } else {
-      Alert.alert('Hoàn thành!', `Bạn đã đốt cháy ${Math.round(totalCalories + calories)} kcal.`, [{ text: 'Xong', onPress: onClose }]);
-    }
-  };
+  useEffect(() => {
+    if (loading || isPaused || timer !== 0 || exercises.length === 0) return;
+    if (isResting) finishRest();
+    else void completeCurrentExercise();
+  }, [
+    timer,
+    isPaused,
+    isResting,
+    loading,
+    exercises.length,
+    finishRest,
+    completeCurrentExercise,
+  ]);
 
   if (loading) return <View style={styles.centerContainer}><ActivityIndicator size="large" color={colors.primaryFixed} /></View>;
+
+  if (error || !currentExercise) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error ?? 'Không tìm thấy bài tập.'}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={loadExercises}>
+          <Text style={styles.retryText}>Thử lại</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.closeLink} onPress={onClose}>
+          <Text style={styles.closeLinkText}>Đóng</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -116,20 +234,18 @@ export default function WorkoutDetailScreen({ programId, userId, onClose }: Prop
               <Text style={styles.errorMediaText}>Link bài tập bị lỗi hoặc đã hết hạn</Text>
               <Text style={styles.hintText}>Vui lòng cập nhật Public URL từ Supabase Storage</Text>
             </View>
-          ) : isGif ? (
-            <Image 
-              source={{ uri: mediaUrl }}
-              style={styles.media}
-              resizeMode="contain"
+          ) : isVideo ? (
+            <ExerciseVideo
+              key={mediaUrl}
+              uri={mediaUrl}
+              isPaused={isPaused}
               onError={() => setMediaError(true)}
             />
           ) : (
-            <Video
+            <Image
               source={{ uri: mediaUrl }}
               style={styles.media}
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay={!isPaused}
-              isLooping
+              resizeMode="contain"
               onError={() => setMediaError(true)}
             />
           )
@@ -190,5 +306,7 @@ const styles = StyleSheet.create({
   skipText: { fontFamily: 'Inter-Bold', fontSize: 14, color: '#fff' },
   errorText: { color: colors.onSurfaceVariant, textAlign: 'center' },
   retryBtn: { padding: 12, backgroundColor: colors.primaryFixed, borderRadius: 12, marginTop: 10 },
-  retryText: { color: colors.onPrimaryFixed, fontFamily: 'Inter-Bold' }
+  retryText: { color: colors.onPrimaryFixed, fontFamily: 'Inter-Bold' },
+  closeLink: { padding: 12, marginTop: 4 },
+  closeLinkText: { color: colors.onSurfaceVariant, fontFamily: 'Inter-Medium' },
 });

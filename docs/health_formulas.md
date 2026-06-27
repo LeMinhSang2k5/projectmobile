@@ -24,6 +24,13 @@ BMR = 10 × cân_nặng(kg) + 6.25 × chiều_cao(cm) - 5 × tuổi + 5
 BMR = 10 × cân_nặng(kg) + 6.25 × chiều_cao(cm) - 5 × tuổi - 161
 ```
 
+**Khác / không chọn công thức nhị phân (fallback trung tính của ứng dụng):**
+```
+BMR = 10 × cân_nặng(kg) + 6.25 × chiều_cao(cm) - 5 × tuổi - 78
+```
+
+Giá trị này là ước tính trung điểm của hai hằng số trên, chỉ dùng để cá nhân hóa trong ứng dụng và không thay thế tư vấn y khoa.
+
 **Ví dụ (nam, 70kg, 175cm, 30 tuổi):**
 BMR = 700 + 1093.75 - 150 + 5 = **1649 kcal/ngày**
 

@@ -44,8 +44,8 @@ import type {
   SuggestedMeals,
 } from '../types';
 import { hasCompleteHealthProfile as checkHealth } from '../lib/healthCalculations';
+import { toLocalDateString } from '../lib/dateUtils';
 
-const today = new Date().toISOString().split('T')[0];
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
 type Props = {
@@ -53,6 +53,7 @@ type Props = {
 };
 
 export default function NutritionScreen({ userId }: Props) {
+  const today = toLocalDateString();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [nutrition, setNutrition] = useState<DailyNutrition | null>(null);
   const [water, setWater] = useState<DailyWaterIntake | null>(null);

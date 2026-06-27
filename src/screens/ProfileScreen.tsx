@@ -15,18 +15,18 @@ import { supabase } from '../../utils/supabase';
 import type { Profile, UserCourse, DailyWaterIntake, DailyNutrition } from '../types';
 import WaterTracker from '../components/WaterTracker';
 import MacroChart from '../components/MacroChart';
-import { getCalorieGoal, getMacroGoals, getWaterGoalMl } from '../services/healthService';
+import {
+  getCalorieGoal,
+  getMacroGoals,
+  getWaterGoalMl,
+  recalculateAndSave,
+} from '../services/healthService';
 import { getTodayWater, addWater } from '../services/waterService';
-
-const today = new Date().toISOString().split('T')[0];
+import { calculateAgeFromDate, toLocalDateString } from '../lib/dateUtils';
 
 // ─── Tính tuổi từ ngày sinh ────────────────────────────────────────
 function calcAge(dob: Date): number {
-  const now = new Date();
-  let age = now.getFullYear() - dob.getFullYear();
-  const m = now.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
-  return Math.max(0, age);
+  return calculateAgeFromDate(dob);
 }
 
 function formatDob(date: Date): string {
@@ -107,7 +107,7 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
       fitness_goal: goal,
     };
     if (dob) {
-      payload.date_of_birth = dob.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+      payload.date_of_birth = toLocalDateString(dob);
       payload.age = calcAge(dob);
     }
 
@@ -118,9 +118,19 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
       .select()
       .single();
 
+    if (error) {
+      setSaving(false);
+      Alert.alert('Lỗi', error.message);
+      return;
+    }
+    let updatedProfile = data as Profile;
+    try {
+      updatedProfile = (await recalculateAndSave(userId)) ?? updatedProfile;
+    } catch {
+      // Profile fields were saved; health targets can be recalculated on next nutrition refresh.
+    }
     setSaving(false);
-    if (error) { Alert.alert('Lỗi', error.message); return; }
-    onSaved(data as Profile);
+    onSaved(updatedProfile);
     onClose();
   }, [name, dob, goal, userId, onSaved, onClose]);
 
@@ -247,6 +257,7 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
 // Main ProfileScreen
 // ─────────────────────────────────────────────────────────────────
 export default function ProfileScreen({ userId, onAvatarUpdated, onNavigateToNutrition }: Props) {
+  const today = toLocalDateString();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeCourse, setActiveCourse] = useState<UserCourse | null>(null);
   const [water, setWater] = useState<DailyWaterIntake | null>(null);

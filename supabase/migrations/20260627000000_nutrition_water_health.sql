@@ -1,5 +1,30 @@
 -- Nutrition, Water, Health Logic migration
 
+-- Bootstrap the base tables so a fresh Supabase project can replay migrations.
+CREATE TABLE IF NOT EXISTS profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name text,
+  avatar_url text,
+  daily_calorie_goal int NOT NULL DEFAULT 2100,
+  wakeup_time time NOT NULL DEFAULT '06:30',
+  age int,
+  fitness_goal text,
+  date_of_birth date,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS daily_water_intake (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  date date NOT NULL,
+  water_cups int NOT NULL DEFAULT 0,
+  water_goal int NOT NULL DEFAULT 8,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, date)
+);
+
 -- Extend profiles with health metrics
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS height_cm numeric,

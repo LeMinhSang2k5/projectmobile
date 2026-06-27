@@ -1,21 +1,34 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { spacing, typography } from '../theme/layout';
 
 type Props = {
   avatarUrl?: string | null;
   onAvatarPress?: () => void;
+  onMenuPress?: () => void;
 };
 
-export default function Header({ avatarUrl, onAvatarPress }: Props) {
+export default function Header({ avatarUrl, onAvatarPress, onMenuPress }: Props) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
-      <TouchableOpacity activeOpacity={0.7}>
-        <MaterialIcons name="menu" size={28} color={colors.primaryFixed} />
+    <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
+      <TouchableOpacity
+        style={styles.menuButton}
+        activeOpacity={0.75}
+        onPress={onMenuPress}
+        hitSlop={10}
+      >
+        <MaterialIcons name="menu" size={24} color={colors.primaryFixed} />
       </TouchableOpacity>
 
-      <Text style={styles.title}>ELITE FIT</Text>
+      <View style={styles.brandWrap}>
+        <Text style={styles.title}>ELITE FIT</Text>
+        <Text style={styles.tagline}>Performance Hub</Text>
+      </View>
 
       <TouchableOpacity
         style={styles.avatarContainer}
@@ -29,7 +42,6 @@ export default function Header({ avatarUrl, onAvatarPress }: Props) {
             <MaterialIcons name="person" size={18} color={colors.primaryFixed} />
           </View>
         )}
-        {/* Green dot indicator */}
         <View style={styles.onlineDot} />
       </TouchableOpacity>
     </View>
@@ -41,39 +53,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 16,
-    backgroundColor: 'rgba(18, 20, 20, 0.8)',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    backgroundColor: 'rgba(18, 20, 20, 0.92)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(68, 73, 52, 0.3)',
-    zIndex: 50,
+    borderBottomColor: colors.glassBorder,
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandWrap: {
+    alignItems: 'center',
   },
   title: {
     fontFamily: 'Montserrat-ExtraBold',
-    fontSize: 24,
+    fontSize: 20,
     color: colors.primaryFixed,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+    letterSpacing: 0.8,
   },
   avatarContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'visible',
     borderWidth: 2,
     borderColor: colors.primaryFixed,
     position: 'relative',
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   avatarFallback: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(198,243,51,0.1)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.accentMuted,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -86,6 +116,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#4ade80',
     borderWidth: 2,
-    borderColor: 'rgba(18,20,20,1)',
+    borderColor: colors.surface,
   },
 });

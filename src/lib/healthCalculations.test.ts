@@ -21,6 +21,7 @@ export function runHealthCalculationTests(): void {
   assertClose(calculateBMI(70, 175), 22.9, 0.1, 'BMI 70kg 175cm');
   assert(calculateBMR(70, 175, 30, 'male') === 1649, 'BMR male');
   assert(calculateBMR(60, 165, 28, 'female') === 1330, 'BMR female');
+  assert(calculateBMR(70, 175, 30, 'other') === 1566, 'BMR neutral');
   assert(calculateTDEE(1649, 'sedentary') === 1979, 'TDEE sedentary');
   assert(calculateTDEE(1649, 'very_active') === 2845, 'TDEE very_active');
   assert(calculateWaterGoalMl(70) === 2450, 'water 70kg');
