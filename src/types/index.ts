@@ -26,6 +26,42 @@ export type Profile = {
   water_reminder_enabled: boolean | null;
 };
 
+export type Program = {
+  id: string;
+  title: string;
+  description: string | null;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  thumbnail_url: string | null;
+  created_at: string;
+};
+
+export type Exercise = {
+  id: string;
+  program_id: string;
+  name: string;
+  duration: number;
+  met_value: number;
+  media_url: string | null;
+  created_at: string;
+};
+
+export type ExerciseLog = {
+  id: string;
+  user_id: string;
+  exercise_id: string;
+  workout_date: string;
+  calories_burned: number;
+  created_at: string;
+};
+
+export type UserStreak = {
+  id: string;
+  user_id: string;
+  current_streak: number;
+  last_workout_date: string | null;
+  updated_at: string;
+};
+
 export type WorkoutCourse = {
   id: string;
   title: string;

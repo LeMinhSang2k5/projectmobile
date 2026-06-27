@@ -13,6 +13,8 @@ import BottomNav, { type Tab } from './src/components/BottomNav';
 import LoginScreen from './src/screens/LoginScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NutritionScreen from './src/screens/NutritionScreen';
+import ProgramsScreen from './src/screens/ProgramsScreen';
+import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import { colors } from './src/theme/colors';
 import { supabase } from './utils/supabase';
 import { syncWaterRemindersOnLaunch } from './src/services/waterReminderService';
@@ -24,6 +26,7 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -74,6 +77,17 @@ export default function App() {
 
   const renderScreen = () => {
     if (!userId) return null;
+
+    if (selectedProgramId) {
+      return (
+        <WorkoutDetailScreen
+          programId={selectedProgramId}
+          onClose={() => setSelectedProgramId(null)}
+          userId={userId}
+        />
+      );
+    }
+
     switch (activeTab) {
       case 'profile':
         return (
@@ -87,13 +101,7 @@ export default function App() {
         return <NutritionScreen userId={userId} />;
       case 'training':
         return (
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.welcomeSection}>
-              <Text style={styles.welcomeTitle}>Phòng Tập</Text>
-              <Text style={styles.welcomeSub}>Thư viện bài tập sẽ được cập nhật sớm.</Text>
-            </View>
-            <WorkoutCard />
-          </ScrollView>
+          <ProgramsScreen onSelectProgram={(id) => setSelectedProgramId(id)} />
         );
       default:
         return (
@@ -126,7 +134,9 @@ export default function App() {
           <View style={styles.body}>
             {userId ? renderScreen() : null}
           </View>
-          <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+          {!selectedProgramId && (
+            <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+          )}
         </SafeAreaView>
       )}
     </SafeAreaProvider>

@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import MacroChart, { CalorieRing } from './MacroChart';
 import WaterTracker from './WaterTracker';
+import { supabase } from '../../utils/supabase';
 import { getProfile, getCalorieGoal, getWaterGoalMl } from '../services/healthService';
 import { getDailyNutrition } from '../services/nutritionService';
 import { getTodayWater, addWater } from '../services/waterService';
@@ -20,17 +21,24 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [nutrition, setNutrition] = useState<DailyNutrition | null>(null);
   const [water, setWater] = useState<DailyWaterIntake | null>(null);
+  const [streak, setStreak] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
       const prof = await getProfile(userId);
       setProfile(prof);
-      const [nutritionData, waterData] = await Promise.all([
+      const [nutritionData, waterData, streakResult] = await Promise.all([
         getDailyNutrition(userId, today),
         getTodayWater(userId, prof, today),
+        supabase
+          .from('user_streaks')
+          .select('current_streak')
+          .eq('user_id', userId)
+          .maybeSingle(),
       ]);
       setNutrition(nutritionData);
       setWater(waterData);
+      if (streakResult.data) setStreak(streakResult.data.current_streak);
     } catch (err) {
       console.error('StatsGrid fetch error:', err);
     }
@@ -57,6 +65,14 @@ export default function StatsGrid({ userId, onNavigateToNutrition }: Props) {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.card, styles.streakCard]}>
+        <View style={styles.streakInfo}>
+          <Text style={styles.streakLabel}>CHUỖI NGÀY TẬP</Text>
+          <Text style={styles.streakValue}>{streak} Ngày</Text>
+        </View>
+        <MaterialIcons name="local-fire-department" size={40} color={colors.primaryFixed} />
+      </View>
+
       <View style={[styles.card, styles.alarmCard]}>
         <View style={styles.iconCircle}>
           <MaterialIcons name="alarm" size={28} color={colors.primaryFixed} />
@@ -123,6 +139,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     padding: 24,
+  },
+  streakCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(198, 243, 51, 0.1)',
+    borderColor: colors.primaryFixed,
+  },
+  streakInfo: {
+    flex: 1,
+  },
+  streakLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    letterSpacing: 1,
+  },
+  streakValue: {
+    fontFamily: 'Montserrat-Bold',
+    fontSize: 28,
+    color: colors.onSurface,
+    marginTop: 4,
   },
   alarmCard: {
     alignItems: 'center',
