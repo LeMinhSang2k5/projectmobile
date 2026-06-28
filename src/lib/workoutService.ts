@@ -8,10 +8,42 @@ export { calculateCalories } from './workoutCalculations';
 const MOCK_PROGRAMS: Program[] = [
   {
     id: 'mock-p1',
-    title: 'Elite Fitness Ignite (Offline)',
-    description: 'Chương trình mẫu dành cho chế độ Offline',
+    title: 'Elite Fitness Ignite',
+    description: 'Chương trình khởi động cơ bản.',
     level: 'Beginner',
     thumbnail_url: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-p2',
+    title: 'Sức Mạnh Toàn Thân',
+    description: 'Tăng cường sức mạnh cơ bắp.',
+    level: 'Intermediate',
+    thumbnail_url: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-p3',
+    title: 'Yoga & Linh Hoạt',
+    description: 'Dẻo dai và cân bằng tâm trí.',
+    level: 'Beginner',
+    thumbnail_url: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-p4',
+    title: 'HIIT Đốt Mỡ Siêu Tốc',
+    description: 'Đốt cháy calo ở cường độ cao.',
+    level: 'Advanced',
+    thumbnail_url: 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712',
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'mock-p5',
+    title: 'Cardio Tim Mạch',
+    description: 'Cải thiện sức bền hệ tim mạch.',
+    level: 'Intermediate',
+    thumbnail_url: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c',
     created_at: new Date().toISOString(),
   },
 ];
@@ -32,24 +64,31 @@ export const fetchPrograms = async (): Promise<Program[]> => {
     return data;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.log('Sử dụng dữ liệu mẫu do lỗi:', message);
+    console.log('Sử dụng 5 chương trình mẫu do lỗi:', message);
     return MOCK_PROGRAMS;
   }
 };
 
 export const fetchExercisesByProgram = async (programId: string): Promise<Exercise[]> => {
-  if (programId === 'mock-p1') {
-    return [
-      {
-        id: 'mock-e1',
-        program_id: 'mock-p1',
-        name: 'Jumping Jacks (Dữ liệu mẫu)',
-        duration: 30,
-        met_value: 8.0,
-        media_url: 'https://i.giphy.com/3o7TKMGpxVfFzU8f9S.gif',
-        created_at: new Date().toISOString(),
-      },
-    ];
+  if (programId.startsWith('mock-') || programId.length < 5) {
+    const mockExercises: Record<string, Exercise[]> = {
+      'mock-p1': [
+        { id: 'm1-1', program_id: programId, name: 'Jumping Jacks', duration: 30, met_value: 8.0, media_url: 'https://i.giphy.com/3o7TKMGpxVfFzU8f9S.gif', created_at: new Date().toISOString() },
+      ],
+      'mock-p2': [
+        { id: 'm2-1', program_id: programId, name: 'Pushups', duration: 45, met_value: 8.0, media_url: 'https://i.giphy.com/3o7TKMGpxVfFzU8f9S.gif', created_at: new Date().toISOString() },
+      ],
+      'mock-p3': [
+        { id: 'm3-1', program_id: programId, name: 'Plank', duration: 60, met_value: 3.0, media_url: 'https://i.giphy.com/3o7TKMGpxVfFzU8f9S.gif', created_at: new Date().toISOString() },
+      ],
+      'mock-p4': [
+        { id: 'm4-1', program_id: programId, name: 'Burpees', duration: 30, met_value: 12.0, media_url: 'https://i.giphy.com/3o7TKMGpxVfFzU8f9S.gif', created_at: new Date().toISOString() },
+      ],
+      'mock-p5': [
+        { id: 'm5-1', program_id: programId, name: 'Chạy tại chỗ', duration: 60, met_value: 7.0, media_url: 'https://i.giphy.com/3o7TKMGpxVfFzU8f9S.gif', created_at: new Date().toISOString() },
+      ],
+    };
+    return mockExercises[programId] || mockExercises['mock-p1'];
   }
 
   const { data, error } = await supabase
@@ -62,7 +101,7 @@ export const fetchExercisesByProgram = async (programId: string): Promise<Exerci
 };
 
 export const logExercise = async (userId: string, exerciseId: string, calories: number) => {
-  if (exerciseId.startsWith('mock-')) return;
+  if (exerciseId.startsWith('mock-') || exerciseId.startsWith('m')) return;
 
   const { error } = await supabase.from('exercise_logs').insert({
     user_id: userId,
