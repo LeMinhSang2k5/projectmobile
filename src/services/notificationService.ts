@@ -138,9 +138,9 @@ export async function updateNotificationPreferences(
   const current = await getNotificationPreferences(userId);
   const next: NotificationPreferences = { ...current, ...prefs };
 
-  if (isExpoGo && (prefs.water_reminder_enabled || prefs.workout_reminder_enabled)) {
+  if (isExpoGo && prefs.workout_reminder_enabled === true) {
     throw new Error(
-      'Nhắc nhở không khả dụng trên Expo Go. Hãy dùng development build để bật thông báo.',
+      'Nhắc tập luyện không khả dụng trên Expo Go. Hãy dùng development build để bật thông báo.',
     );
   }
 
@@ -191,9 +191,9 @@ export async function updateNotificationPreferences(
 }
 
 export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
-  if (isExpoGo) return;
-
   await syncWaterRemindersOnLaunch(userId);
+
+  if (isExpoGo) return;
 
   const prefs = await getNotificationPreferences(userId);
   if (prefs.workout_reminder_enabled) {

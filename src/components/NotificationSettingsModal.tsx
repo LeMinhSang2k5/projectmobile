@@ -104,7 +104,7 @@ export default function NotificationSettingsModal({
           {!isNotificationSupported() && (
             <View style={styles.notice}>
               <Text style={styles.noticeText}>
-                Nhắc nhở push chỉ hoạt động trên development build, không hỗ trợ Expo Go.
+                Expo Go: nhắc uống nước dùng chế độ trong app. Nhắc tập luyện push cần development build.
               </Text>
             </View>
           )}

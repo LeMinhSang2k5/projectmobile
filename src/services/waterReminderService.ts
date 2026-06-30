@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { supabase } from '../../utils/supabase';
@@ -13,12 +13,61 @@ const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let notificationsModule: NotificationsModule | null | undefined;
+let inAppInterval: ReturnType<typeof setInterval> | null = null;
+let lastInAppReminderKey: string | null = null;
+let inAppRemindersActive = false;
 
 function isNotificationGranted(
   perm: Awaited<ReturnType<NotificationsModule['getPermissionsAsync']>>
 ): boolean {
   const p = perm as PermResult;
   return p.granted === true || p.status === 'granted';
+}
+
+export function isInAppWaterReminderMode(): boolean {
+  return isExpoGo && inAppRemindersActive;
+}
+
+export function isExpoGoEnvironment(): boolean {
+  return isExpoGo;
+}
+
+function getCurrentReminderKey(): string | null {
+  const now = new Date();
+  const hour = now.getHours();
+  if (!WATER_REMINDER_HOURS.includes(hour)) return null;
+  const date = now.toISOString().split('T')[0];
+  return `${date}-${hour}`;
+}
+
+function showWaterReminderAlert(): void {
+  Alert.alert(
+    'Nhắc uống nước 💧',
+    'Đã đến giờ uống nước! Hãy bổ sung nước để duy trì sức khỏe.',
+  );
+}
+
+function checkInAppWaterReminder(): void {
+  const key = getCurrentReminderKey();
+  if (!key || key === lastInAppReminderKey) return;
+  lastInAppReminderKey = key;
+  showWaterReminderAlert();
+}
+
+function startInAppWaterReminders(): void {
+  stopInAppWaterReminders();
+  inAppRemindersActive = true;
+  checkInAppWaterReminder();
+  inAppInterval = setInterval(checkInAppWaterReminder, 60 * 1000);
+}
+
+function stopInAppWaterReminders(): void {
+  inAppRemindersActive = false;
+  lastInAppReminderKey = null;
+  if (inAppInterval) {
+    clearInterval(inAppInterval);
+    inAppInterval = null;
+  }
 }
 
 async function getNotifications(): Promise<NotificationsModule | null> {
@@ -63,6 +112,8 @@ async function requestPermissions(): Promise<boolean> {
 }
 
 async function cancelWaterNotifications(): Promise<void> {
+  stopInAppWaterReminders();
+
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
@@ -104,9 +155,13 @@ async function scheduleWaterNotifications(): Promise<void> {
 
 export async function enableWaterReminders(userId: string): Promise<void> {
   if (isExpoGo) {
-    throw new Error(
-      'Nhắc uống nước không khả dụng trên Expo Go. Hãy dùng development build để bật thông báo.'
-    );
+    startInAppWaterReminders();
+    const { error } = await supabase
+      .from('profiles')
+      .update({ water_reminder_enabled: true })
+      .eq('id', userId);
+    if (error) throw error;
+    return;
   }
 
   const granted = await requestPermissions();
@@ -146,16 +201,19 @@ export async function disableWaterReminders(userId: string): Promise<void> {
 }
 
 export async function syncWaterRemindersOnLaunch(userId: string): Promise<void> {
-  if (isExpoGo) return;
-
   const { data } = await supabase
     .from('profiles')
     .select('water_reminder_enabled')
     .eq('id', userId)
     .single();
 
-  if (data?.water_reminder_enabled) {
-    const granted = await requestPermissions();
-    if (granted) await scheduleWaterNotifications();
+  if (!data?.water_reminder_enabled) return;
+
+  if (isExpoGo) {
+    startInAppWaterReminders();
+    return;
   }
+
+  const granted = await requestPermissions();
+  if (granted) await scheduleWaterNotifications();
 }

@@ -34,6 +34,7 @@ import { getTodayWater, addWater } from '../services/waterService';
 import {
   enableWaterReminders,
   disableWaterReminders,
+  isExpoGoEnvironment,
 } from '../services/waterReminderService';
 import type {
   DailyNutrition,
@@ -140,6 +141,12 @@ export default function NutritionScreen({ userId }: Props) {
     try {
       if (value) {
         await enableWaterReminders(userId);
+        if (isExpoGoEnvironment()) {
+          Alert.alert(
+            'Đã bật nhắc uống nước',
+            'Expo Go dùng chế độ nhắc trong app. Thông báo sẽ hiện khi bạn mở app vào các khung giờ 7h, 9h, 11h, 13h, 15h, 17h, 19h, 21h.',
+          );
+        }
       } else {
         await disableWaterReminders(userId);
       }
@@ -319,7 +326,11 @@ export default function NutritionScreen({ userId }: Props) {
         <View style={styles.reminderRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.reminderTitle}>Nhắc uống nước</Text>
-            <Text style={styles.reminderSub}>Mỗi 2 giờ từ 7:00 – 22:00</Text>
+            <Text style={styles.reminderSub}>
+              {isExpoGoEnvironment()
+                ? 'Expo Go: nhắc trong app mỗi 2h (7:00 – 21:00)'
+                : 'Mỗi 2 giờ từ 7:00 – 22:00'}
+            </Text>
           </View>
           <Switch
             value={reminderEnabled}
