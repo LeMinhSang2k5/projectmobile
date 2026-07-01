@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import GlassCard from './ui/GlassCard';
 import { colors } from '../theme/colors';
@@ -9,9 +9,13 @@ import WaterTracker from './WaterTracker';
 import { supabase } from '../../utils/supabase';
 import { getProfile, getCalorieGoal, getWaterGoalMl } from '../services/healthService';
 import { getDailyNutrition } from '../services/nutritionService';
-import { getTodayWater, addWater } from '../services/waterService';
+import { getTodayWater, addWater, setWaterMl } from '../services/waterService';
 import type { DailyNutrition, DailyWaterIntake, Profile } from '../types';
 import { toLocalDateString } from '../lib/dateUtils';
+import {
+  getCalorieLimitStatus,
+  getRemainingWaterMl,
+} from '../lib/limitWarnings';
 
 type Props = {
   userId: string;
@@ -60,11 +64,50 @@ export default function StatsGrid({
   }, [fetchData]);
 
   const handleAddWater = async (ml: number) => {
+    const currentMl = water?.water_ml ?? 0;
+    const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
+    const remainingMl = getRemainingWaterMl(currentMl, goalMl);
+
+    if (remainingMl <= 0) {
+      Alert.alert(
+        'Đã đủ mục tiêu',
+        'Bạn đã đạt hoặc vượt mục tiêu nước hôm nay. Mở tab Dinh dưỡng để điều chỉnh.',
+      );
+      return;
+    }
+
+    const amountToAdd = Math.min(ml, remainingMl);
+    const add = async (amount: number) => {
+      try {
+        const updated = await addWater(userId, amount, profile, toLocalDateString());
+        setWater(updated);
+      } catch (err) {
+        console.error('Add water error:', err);
+      }
+    };
+
+    if (amountToAdd < ml) {
+      Alert.alert(
+        'Điều chỉnh lượng nước',
+        `Chỉ còn ${remainingMl}ml đến mục tiêu. Bạn muốn thêm ${amountToAdd}ml cho vừa mục tiêu?`,
+        [
+          { text: 'Hủy', style: 'cancel' },
+          { text: `Thêm ${amountToAdd}ml`, onPress: () => void add(amountToAdd) },
+        ],
+      );
+      return;
+    }
+
+    await add(amountToAdd);
+  };
+
+  const handleSetWaterToGoal = async () => {
+    const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
     try {
-      const updated = await addWater(userId, ml, profile, toLocalDateString());
+      const updated = await setWaterMl(userId, goalMl, profile, toLocalDateString());
       setWater(updated);
     } catch (err) {
-      console.error('Add water error:', err);
+      console.error('Set water goal error:', err);
     }
   };
 
@@ -73,6 +116,7 @@ export default function StatsGrid({
   const waterMl = water?.water_ml ?? 0;
   const waterGoalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
   const wakeupTime = profile?.wakeup_time ?? '06:30';
+  const calorieLimit = getCalorieLimitStatus(caloriesConsumed, calorieGoal);
 
   return (
     <View style={styles.container}>
@@ -114,7 +158,11 @@ export default function StatsGrid({
             </View>
             <View style={styles.foodRow}>
               <Text style={styles.foodRowLabel}>Còn lại</Text>
-              <Text style={styles.foodRowValue}>{Math.max(0, calorieGoal - caloriesConsumed)}</Text>
+              <Text style={styles.foodRowValue}>
+                {calorieLimit.isOver
+                  ? `Vượt ${calorieLimit.excess}`
+                  : Math.max(0, calorieGoal - caloriesConsumed)}
+              </Text>
             </View>
           </View>
         </GlassCard>
@@ -125,6 +173,7 @@ export default function StatsGrid({
           waterMl={waterMl}
           waterGoalMl={waterGoalMl}
           onAddWater={handleAddWater}
+          onSetWaterToGoal={handleSetWaterToGoal}
           compact
         />
       </TouchableOpacity>
@@ -230,6 +279,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: colors.onSurface,
+  },
+  foodRowValueOver: {
+    color: '#ff6b6b',
   },
   macroLinkText: {
     fontFamily: 'Inter-Medium',

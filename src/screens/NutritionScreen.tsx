@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,7 @@ import {
   getMacroGoals,
   getWaterGoalMl,
 } from '../services/healthService';
-import { getTodayWater, addWater } from '../services/waterService';
+import { getTodayWater, addWater, setWaterMl } from '../services/waterService';
 import {
   enableWaterReminders,
   disableWaterReminders,
@@ -46,6 +46,13 @@ import type {
 } from '../types';
 import { hasCompleteHealthProfile as checkHealth } from '../lib/healthCalculations';
 import { toLocalDateString } from '../lib/dateUtils';
+import LimitAdjustHint from '../components/LimitAdjustHint';
+import {
+  getCalorieLimitStatus,
+  getMacroLimitItems,
+  getOverMacroLabels,
+  getRemainingWaterMl,
+} from '../lib/limitWarnings';
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
@@ -75,6 +82,9 @@ export default function NutritionScreen({ userId }: Props) {
     dinner: [],
   });
   const [applyingMeal, setApplyingMeal] = useState<MealType | null>(null);
+  const [macroHintDismissed, setMacroHintDismissed] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const mealJournalY = useRef(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -105,7 +115,7 @@ export default function NutritionScreen({ userId }: Props) {
       }
       setMealsByType(grouped);
 
-      const mealSuggestions = await getSuggestedMeals(getCalorieGoal(prof));
+      const mealSuggestions = await getSuggestedMeals(getCalorieGoal(prof), today);
       setSuggestions(mealSuggestions);
     } catch (err) {
       console.error('Nutrition fetch error:', err);
@@ -115,16 +125,77 @@ export default function NutritionScreen({ userId }: Props) {
     }
   }, [userId]);
 
+  const macroGoalsForHint = getMacroGoals(profile);
+  const overMacroCount = getOverMacroLabels(
+    getMacroLimitItems(
+      nutrition?.protein_g ?? 0,
+      nutrition?.carbs_g ?? 0,
+      nutrition?.fat_g ?? 0,
+      macroGoalsForHint,
+    ),
+  ).length;
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (overMacroCount === 0) {
+      setMacroHintDismissed(false);
+    }
+  }, [overMacroCount]);
+
   const handleAddWater = async (ml: number) => {
+    const currentMl = water?.water_ml ?? 0;
+    const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
+    const remainingMl = getRemainingWaterMl(currentMl, goalMl);
+
+    if (remainingMl <= 0) {
+      Alert.alert(
+        'Đã đủ mục tiêu',
+        'Bạn đã đạt hoặc vượt mục tiêu nước hôm nay. Dùng "Đặt về mục tiêu" nếu muốn điều chỉnh lại.',
+      );
+      return;
+    }
+
+    const amountToAdd = Math.min(ml, remainingMl);
+    if (amountToAdd < ml) {
+      Alert.alert(
+        'Điều chỉnh lượng nước',
+        `Chỉ còn ${remainingMl}ml đến mục tiêu. Bạn muốn thêm ${amountToAdd}ml cho vừa mục tiêu?`,
+        [
+          { text: 'Hủy', style: 'cancel' },
+          {
+            text: `Thêm ${amountToAdd}ml`,
+            onPress: () => void (async () => {
+              try {
+                const updated = await addWater(userId, amountToAdd, profile, today);
+                setWater(updated);
+              } catch (err: any) {
+                Alert.alert('Lỗi', err.message ?? 'Không thể cập nhật nước');
+              }
+            })(),
+          },
+        ],
+      );
+      return;
+    }
+
     try {
-      const updated = await addWater(userId, ml, profile, today);
+      const updated = await addWater(userId, amountToAdd, profile, today);
       setWater(updated);
     } catch (err: any) {
       Alert.alert('Lỗi', err.message ?? 'Không thể cập nhật nước');
+    }
+  };
+
+  const handleSetWaterToGoal = async () => {
+    const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
+    try {
+      const updated = await setWaterMl(userId, goalMl, profile, today);
+      setWater(updated);
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message ?? 'Không thể điều chỉnh nước');
     }
   };
 
@@ -197,10 +268,24 @@ export default function NutritionScreen({ userId }: Props) {
   const waterMl = water?.water_ml ?? 0;
   const waterGoalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
   const profileComplete = profile ? checkHealth(profile) : false;
+  const calorieLimit = getCalorieLimitStatus(caloriesConsumed, calorieGoal);
+  const macroLimits = getMacroLimitItems(
+    nutrition?.protein_g ?? 0,
+    nutrition?.carbs_g ?? 0,
+    nutrition?.fat_g ?? 0,
+    macroGoals,
+  );
+  const overMacros = getOverMacroLabels(macroLimits);
+  const suggestedTotalCalories = (['breakfast', 'lunch', 'dinner'] as const).reduce(
+    (sum, mealType) =>
+      sum + suggestions[mealType].reduce((mealSum, item) => mealSum + item.estimatedCalories, 0),
+    0,
+  );
 
   return (
     <>
       <ScrollView
+        ref={scrollRef}
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -224,6 +309,23 @@ export default function NutritionScreen({ userId }: Props) {
           </View>
         )}
 
+        {calorieLimit.isOver && (
+          <LimitAdjustHint
+            message={`Bạn đang vượt ${calorieLimit.excess} kcal so với mục tiêu. Xóa bớt món trong nhật ký để về đúng quy định.`}
+            actionLabel="Xem nhật ký bữa ăn"
+            onAction={() => scrollRef.current?.scrollTo({ y: mealJournalY.current, animated: true })}
+          />
+        )}
+
+        {overMacros.length > 0 && !macroHintDismissed && (
+          <LimitAdjustHint
+            message={`Macro đang vượt: ${overMacros.join(', ')}. Hãy xóa hoặc giảm khẩu phần món phù hợp.`}
+            actionLabel="Xem nhật ký bữa ăn"
+            onAction={() => scrollRef.current?.scrollTo({ y: mealJournalY.current, animated: true })}
+            onDismiss={() => setMacroHintDismissed(true)}
+          />
+        )}
+
         <View style={styles.summaryCard}>
           <CalorieRing value={caloriesConsumed} maxValue={calorieGoal} />
           <View style={styles.summaryDetails}>
@@ -238,7 +340,11 @@ export default function NutritionScreen({ userId }: Props) {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Còn lại</Text>
-              <Text style={styles.summaryValue}>{Math.max(0, calorieGoal - caloriesConsumed)}</Text>
+              <Text style={styles.summaryValue}>
+                {calorieLimit.isOver
+                  ? `Vượt ${calorieLimit.excess} kcal`
+                  : Math.max(0, calorieGoal - caloriesConsumed)}
+              </Text>
             </View>
           </View>
         </View>
@@ -256,6 +362,9 @@ export default function NutritionScreen({ userId }: Props) {
         </View>
 
         <Text style={styles.sectionTitle}>Gợi ý thực đơn 3 bữa</Text>
+        <Text style={styles.suggestionSubtitle}>
+          Tổng ~{suggestedTotalCalories} / {calorieGoal} kcal · Thực đơn đổi mỗi ngày
+        </Text>
         {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
           <View key={mealType} style={styles.suggestionCard}>
             <View style={styles.suggestionHeader}>
@@ -298,7 +407,12 @@ export default function NutritionScreen({ userId }: Props) {
           </View>
         ))}
 
-        <View style={styles.sectionHeader}>
+        <View
+          style={styles.sectionHeader}
+          onLayout={(event) => {
+            mealJournalY.current = event.nativeEvent.layout.y;
+          }}
+        >
           <Text style={styles.sectionTitle}>Nhật ký bữa ăn</Text>
           <TouchableOpacity style={styles.addFoodBtn} onPress={() => openAddModal('breakfast')}>
             <MaterialIcons name="restaurant" size={18} color={colors.onPrimaryFixed} />
@@ -321,6 +435,7 @@ export default function NutritionScreen({ userId }: Props) {
           waterMl={waterMl}
           waterGoalMl={waterGoalMl}
           onAddWater={handleAddWater}
+          onSetWaterToGoal={handleSetWaterToGoal}
         />
 
         <View style={styles.reminderRow}>
@@ -348,6 +463,8 @@ export default function NutritionScreen({ userId }: Props) {
         userId={userId}
         date={today}
         defaultMealType={defaultMealType}
+        currentCalories={caloriesConsumed}
+        calorieGoal={calorieGoal}
         onClose={() => setAddModalVisible(false)}
         onAdded={fetchData}
       />
@@ -400,6 +517,9 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
   },
+  summaryCardOver: {
+    borderColor: 'rgba(255, 107, 107, 0.4)',
+  },
   summaryDetails: { flex: 1 },
   summaryTitle: {
     fontFamily: 'Inter-SemiBold',
@@ -423,12 +543,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.onSurface,
   },
+  summaryValueOver: {
+    color: '#ff6b6b',
+  },
   sectionTitle: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     color: colors.onSurface,
     marginBottom: 12,
     marginTop: 8,
+  },
+  suggestionSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    marginTop: -4,
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',

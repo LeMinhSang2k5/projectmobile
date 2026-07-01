@@ -17,6 +17,13 @@ import { colors } from '../theme/colors';
 import { searchFoods, addMealItem } from '../services/nutritionService';
 import type { Food, MealType } from '../types';
 import { MEAL_TYPE_LABELS } from '../types';
+import {
+  getCalorieOverExcessAtQuantity,
+  getFoodCaloriesAtQuantity,
+  getMaxFoodQuantityWithinCalorieLimit,
+  getRemainingCalories,
+  isFoodQuantityOverCalorieLimit,
+} from '../lib/limitWarnings';
 
 const QUANTITY_OPTIONS = [0.5, 1, 1.5, 2];
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
@@ -26,6 +33,8 @@ type Props = {
   userId: string;
   date: string;
   defaultMealType?: MealType;
+  currentCalories?: number;
+  calorieGoal?: number;
   onClose: () => void;
   onAdded: () => void;
 };
@@ -35,6 +44,8 @@ export default function AddFoodModal({
   userId,
   date,
   defaultMealType = 'breakfast',
+  currentCalories = 0,
+  calorieGoal = 2100,
   onClose,
   onAdded,
 }: Props) {
@@ -77,7 +88,7 @@ export default function AddFoodModal({
     return () => clearTimeout(timer);
   }, [query, visible]);
 
-  const handleAdd = useCallback(async () => {
+  const performAdd = useCallback(async () => {
     if (!selectedFood) return;
     setSaving(true);
     setError(null);
@@ -91,6 +102,54 @@ export default function AddFoodModal({
       setSaving(false);
     }
   }, [selectedFood, userId, date, mealType, quantity, onAdded, onClose]);
+
+  const handleAdd = useCallback(async () => {
+    if (!selectedFood) return;
+    if (
+      isFoodQuantityOverCalorieLimit(
+        selectedFood.calories,
+        quantity,
+        currentCalories,
+        calorieGoal,
+      )
+    ) {
+      return;
+    }
+    await performAdd();
+  }, [selectedFood, quantity, currentCalories, calorieGoal, performAdd]);
+
+  const remainingCalories = getRemainingCalories(currentCalories, calorieGoal);
+  const selectedCalories = selectedFood
+    ? getFoodCaloriesAtQuantity(selectedFood.calories, quantity)
+    : 0;
+  const isOverSelection = selectedFood
+    ? isFoodQuantityOverCalorieLimit(
+        selectedFood.calories,
+        quantity,
+        currentCalories,
+        calorieGoal,
+      )
+    : false;
+  const overExcess = selectedFood
+    ? getCalorieOverExcessAtQuantity(
+        selectedFood.calories,
+        quantity,
+        currentCalories,
+        calorieGoal,
+      )
+    : 0;
+  const suggestedQuantity = selectedFood
+    ? getMaxFoodQuantityWithinCalorieLimit(
+        selectedFood.calories,
+        currentCalories,
+        calorieGoal,
+        QUANTITY_OPTIONS,
+      )
+    : null;
+  const suggestedCalories =
+    selectedFood && suggestedQuantity != null
+      ? getFoodCaloriesAtQuantity(selectedFood.calories, suggestedQuantity)
+      : 0;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -175,15 +234,46 @@ export default function AddFoodModal({
                     </TouchableOpacity>
                   ))}
                 </View>
+                <Text style={styles.caloriePreview}>
+                  {selectedCalories} kcal · Còn {remainingCalories} kcal trong ngày
+                </Text>
+                {isOverSelection ? (
+                  <View style={styles.adjustHint}>
+                    <MaterialIcons name="info-outline" size={18} color={colors.primaryFixed} />
+                    <View style={styles.adjustHintText}>
+                      <Text style={styles.adjustHintMessage}>
+                        Khẩu phần {quantity}x sẽ vượt mục tiêu {overExcess} kcal. Hãy giảm khẩu phần
+                        hoặc chọn gợi ý bên dưới.
+                      </Text>
+                      {suggestedQuantity != null ? (
+                        <TouchableOpacity
+                          style={styles.adjustBtn}
+                          onPress={() => setQuantity(suggestedQuantity)}
+                        >
+                          <Text style={styles.adjustBtnText}>
+                            Dùng {suggestedQuantity}x ({suggestedCalories} kcal)
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.adjustHintSub}>
+                          Không còn khẩu phần phù hợp — hãy xóa bớt món trong nhật ký.
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ) : null}
               </>
             )}
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
             <TouchableOpacity
-              style={[styles.addBtn, (!selectedFood || saving) && styles.addBtnDisabled]}
+              style={[
+                styles.addBtn,
+                (!selectedFood || saving || isOverSelection) && styles.addBtnDisabled,
+              ]}
               onPress={handleAdd}
-              disabled={!selectedFood || saving}
+              disabled={!selectedFood || saving || isOverSelection}
             >
               {saving ? (
                 <ActivityIndicator color={colors.onPrimaryFixed} />
@@ -303,6 +393,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#ff6b6b',
     marginTop: 8,
+  },
+  caloriePreview: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  adjustHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(198, 243, 51, 0.08)',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(198, 243, 51, 0.22)',
+  },
+  adjustHintText: {
+    flex: 1,
+    gap: 8,
+  },
+  adjustHintMessage: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: colors.onSurface,
+    lineHeight: 18,
+  },
+  adjustHintSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    lineHeight: 16,
+  },
+  adjustBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryFixed,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  adjustBtnText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    color: colors.onPrimaryFixed,
   },
   addBtn: {
     backgroundColor: colors.primaryFixed,

@@ -2,11 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { getRemainingWaterMl, getWaterLimitStatus } from '../lib/limitWarnings';
+import LimitAdjustHint from './LimitAdjustHint';
 
 type Props = {
   waterMl: number;
   waterGoalMl: number;
   onAddWater: (ml: number) => void;
+  onSetWaterToGoal?: () => void;
   compact?: boolean;
 };
 
@@ -14,10 +17,14 @@ export default function WaterTracker({
   waterMl,
   waterGoalMl,
   onAddWater,
+  onSetWaterToGoal,
   compact = false,
 }: Props) {
+  const limit = getWaterLimitStatus(waterMl, waterGoalMl);
+  const remainingMl = getRemainingWaterMl(waterMl, waterGoalMl);
   const progress = waterGoalMl > 0 ? Math.min(waterMl / waterGoalMl, 1) : 0;
-  const percent = Math.round(progress * 100);
+  const percent = limit.percent;
+  const fillColor = '#64b5f6';
 
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
@@ -29,13 +36,28 @@ export default function WaterTracker({
             <Text style={styles.countGoal}> / {waterGoalMl} ml</Text>
           </Text>
         </View>
-        <MaterialIcons name="water-drop" size={compact ? 28 : 32} color="#64b5f6" />
+        <MaterialIcons name="water-drop" size={compact ? 28 : 32} color={fillColor} />
       </View>
 
       <View style={styles.progressBg}>
-        <View style={[styles.progressFill, { width: `${percent}%` }]} />
+        <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: fillColor }]} />
       </View>
-      <Text style={styles.percentText}>{percent}% mục tiêu</Text>
+      <Text style={styles.percentText}>
+        {limit.isOver
+          ? `Vượt mục tiêu +${limit.excess} ml — có thể điều chỉnh bên dưới`
+          : remainingMl > 0
+            ? `Còn ${remainingMl} ml (${percent}% mục tiêu)`
+            : `${percent}% mục tiêu`}
+      </Text>
+
+      {limit.isOver && !compact && onSetWaterToGoal ? (
+        <LimitAdjustHint
+          compact
+          message={`Bạn đang uống thêm ${limit.excess} ml so với mục tiêu hôm nay.`}
+          actionLabel="Đặt về mục tiêu"
+          onAction={onSetWaterToGoal}
+        />
+      ) : null}
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
@@ -104,7 +126,6 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#64b5f6',
     borderRadius: 5,
   },
   percentText: {

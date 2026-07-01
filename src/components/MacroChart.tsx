@@ -16,6 +16,7 @@ export function CalorieRing({ value, maxValue, sublabel = 'kcal', size = 120 }: 
   const progress = maxValue > 0 ? Math.min(value / maxValue, 1) : 0;
   const strokeDashoffset = circumference - progress * circumference;
   const center = size / 2;
+  const ringColor = colors.primaryFixed;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -32,7 +33,7 @@ export function CalorieRing({ value, maxValue, sublabel = 'kcal', size = 120 }: 
           cx={center}
           cy={center}
           r={radius}
-          stroke={colors.primaryFixed}
+          stroke={ringColor}
           strokeWidth={8}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
@@ -98,15 +99,18 @@ export default function MacroChart({
         )}
       </View>
       <View style={styles.macroLegend}>
-        {segments.map((seg) => (
+        {segments.map((seg) => {
+          const isOver = seg.goal != null && seg.value > seg.goal;
+          return (
           <View key={seg.label} style={styles.macroItem}>
             <View style={[styles.macroDot, { backgroundColor: seg.color }]} />
             <Text style={styles.macroLabel}>{seg.label}</Text>
-            <Text style={styles.macroValue}>
+            <Text style={[styles.macroValue, isOver && styles.macroValueOver]}>
               {seg.value}g{seg.goal != null ? ` / ${seg.goal}g` : ''}
+              {isOver ? ` (+${seg.value - (seg.goal ?? 0)}g)` : ''}
             </Text>
           </View>
-        ))}
+        );})}
       </View>
     </View>
   );
@@ -171,5 +175,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 13,
     color: colors.onSurface,
+  },
+  macroValueOver: {
+    color: colors.onSurfaceVariant,
   },
 });
