@@ -1,0 +1,14 @@
+# Supabase local/dev configuration
+# https://supabase.com/docs/guides/cli/config
+
+[functions.cms-status]
+verify_jwt = false
+
+[functions.export-user-data]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+[functions.media-upload]
+verify_jwt = true

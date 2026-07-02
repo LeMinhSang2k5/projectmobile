@@ -17,13 +17,15 @@
     "expo-image-picker": "~17.0.11",
     "expo-linear-gradient": "~15.0.8",
     "expo-notifications": "~0.32.17",
+    "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
     "expo-video": "~3.0.16",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-svg": "15.12.1",
-    "react-native-url-polyfill": "^3.0.0"
+    "react-native-url-polyfill": "^3.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
@@ -39,7 +41,11 @@
     "test:workout": "node --import tsx src/lib/__tests__/workoutService.test.ts",
     "test:badges": "node --import tsx src/lib/__tests__/badgeLogic.test.ts",
     "test": "npm run test:formulas && npm run test:workout && npm run test:badges",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:supabase": "node scripts/check-supabase.mjs",
+    "test:cms": "node scripts/test-cms-rls.mjs",
+    "test:security": "node scripts/test-security.mjs",
+    "test:cms-all": "npm run test:cms && npm run test:security"
   },
   "private": true
 }

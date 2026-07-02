@@ -186,7 +186,13 @@ export default function LoginScreen() {
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email: finalEmail, password: finalPassword });
-        if (error) Alert.alert('Đăng ký thất bại', error.message);
+        if (error) {
+          const message =
+            error.message === 'Invalid API key'
+              ? 'API key Supabase không hợp lệ. Vào Dashboard > Project Settings > API, copy lại key đúng project rồi cập nhật file .env và chạy: npm run check:supabase'
+              : error.message;
+          Alert.alert('Đăng ký thất bại', message);
+        }
         else Alert.alert('Thành công', 'Kiểm tra email để xác nhận tài khoản.', [
           { text: 'OK', onPress: () => setIsSignUp(false) },
         ]);

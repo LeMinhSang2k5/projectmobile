@@ -27,6 +27,7 @@ export type Profile = {
   workout_reminder_enabled: boolean | null;
   badge_notifications_enabled: boolean | null;
   onboarding_completed: boolean;
+  role?: 'user' | 'admin';
   updated_at?: string;
 };
 

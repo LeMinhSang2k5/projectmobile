@@ -22,6 +22,8 @@ import {
   recalculateAndSave,
 } from '../services/healthService';
 import { getTodayWater, addWater } from '../services/waterService';
+import { deleteUserAccount, exportUserData } from '../services/accountService';
+import { shareUserDataExcel } from '../lib/exportUserDataExcel';
 import { calculateAgeFromDate, toLocalDateString } from '../lib/dateUtils';
 
 // ─── Tính tuổi từ ngày sinh ────────────────────────────────────────
@@ -46,8 +48,10 @@ type GoalKey = typeof FITNESS_GOALS[number]['key'];
 // ─── Props ────────────────────────────────────────────────────────
 type Props = {
   userId: string;
+  isAdmin?: boolean;
   onAvatarUpdated?: (url: string) => void;
   onNavigateToNutrition?: () => void;
+  onOpenAdmin?: () => void;
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -256,7 +260,13 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
 // ─────────────────────────────────────────────────────────────────
 // Main ProfileScreen
 // ─────────────────────────────────────────────────────────────────
-export default function ProfileScreen({ userId, onAvatarUpdated, onNavigateToNutrition }: Props) {
+export default function ProfileScreen({
+  userId,
+  isAdmin = false,
+  onAvatarUpdated,
+  onNavigateToNutrition,
+  onOpenAdmin,
+}: Props) {
   const today = toLocalDateString();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeCourse, setActiveCourse] = useState<UserCourse | null>(null);
@@ -266,6 +276,8 @@ export default function ProfileScreen({ userId, onAvatarUpdated, onNavigateToNut
   const [refreshing, setRefreshing] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -380,6 +392,44 @@ export default function ProfileScreen({ userId, onAvatarUpdated, onNavigateToNut
       { text: 'Hủy', style: 'cancel' },
       { text: 'Đăng xuất', style: 'destructive', onPress: () => supabase.auth.signOut() },
     ]);
+  };
+
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      const payload = await exportUserData();
+      await shareUserDataExcel(payload);
+      Alert.alert('Thành công', 'File Excel (.xlsx) đã sẵn sàng để lưu hoặc chia sẻ.');
+    } catch (err: any) {
+      Alert.alert('Lỗi xuất dữ liệu', err.message ?? 'Không thể xuất dữ liệu. Vui lòng thử lại.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Xóa tài khoản',
+      'Hành động này xóa vĩnh viễn hồ sơ, lịch sử tập và dinh dưỡng. Bạn không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa vĩnh viễn',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingAccount(true);
+            try {
+              await deleteUserAccount();
+              Alert.alert('Đã xóa', 'Tài khoản của bạn đã được xóa.');
+            } catch (err: any) {
+              Alert.alert('Lỗi', err.message ?? 'Không thể xóa tài khoản.');
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleAddWater = async (ml: number) => {
@@ -602,6 +652,52 @@ export default function ProfileScreen({ userId, onAvatarUpdated, onNavigateToNut
           />
         </View>
 
+        {/* ─── Quản trị CMS (admin) ─── */}
+        {isAdmin ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quản trị</Text>
+            <TouchableOpacity
+              style={styles.privacyBtn}
+              onPress={onOpenAdmin}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="admin-panel-settings" size={18} color={colors.primaryFixed} />
+              <Text style={styles.privacyBtnText}>Mở CMS Admin</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {/* ─── Quyền riêng tư & bảo mật ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quyền riêng tư</Text>
+          <TouchableOpacity
+            style={styles.privacyBtn}
+            onPress={handleExportData}
+            disabled={exportingData || deletingAccount}
+            activeOpacity={0.8}
+          >
+            {exportingData ? (
+              <ActivityIndicator size="small" color={colors.primaryFixed} />
+            ) : (
+              <MaterialIcons name="download" size={18} color={colors.primaryFixed} />
+            )}
+            <Text style={styles.privacyBtnText}>Xuất dữ liệu của tôi</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteAccountBtn}
+            onPress={handleDeleteAccount}
+            disabled={exportingData || deletingAccount}
+            activeOpacity={0.8}
+          >
+            {deletingAccount ? (
+              <ActivityIndicator size="small" color="#ff6b6b" />
+            ) : (
+              <MaterialIcons name="delete-forever" size={18} color="#ff6b6b" />
+            )}
+            <Text style={styles.deleteAccountText}>Xóa tài khoản</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ─── Sign Out ─── */}
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
           <MaterialIcons name="logout" size={18} color="#ff6b6b" />
@@ -769,6 +865,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,107,107,0.08)',
   },
   signOutText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#ff6b6b', marginLeft: 8 },
+  privacyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    marginHorizontal: 16, paddingVertical: 14, borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(198,243,51,0.35)',
+    backgroundColor: 'rgba(198,243,51,0.08)', marginBottom: 10,
+  },
+  privacyBtnText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: colors.primaryFixed, marginLeft: 8 },
+  deleteAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    marginHorizontal: 16, paddingVertical: 14, borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(255,107,107,0.25)',
+    backgroundColor: 'rgba(255,107,107,0.05)',
+  },
+  deleteAccountText: { fontFamily: 'Inter-SemiBold', fontSize: 14, color: '#ff6b6b', marginLeft: 8 },
 
   // ── Edit Modal ──
   modalOverlay: {

@@ -15,7 +15,7 @@ import { colors } from '../theme/colors';
 import type { Tab } from './BottomNav';
 
 type MenuItem = {
-  key: Tab | 'notifications' | 'signout';
+  key: Tab | 'notifications' | 'admin' | 'signout';
   icon: keyof typeof MaterialIcons.glyphMap;
   label: string;
   subtitle?: string;
@@ -32,9 +32,11 @@ type Props = {
   visible: boolean;
   activeTab: Tab;
   displayName?: string | null;
+  isAdmin?: boolean;
   onClose: () => void;
   onNavigate: (tab: Tab) => void;
   onOpenNotifications: () => void;
+  onOpenAdmin?: () => void;
   onSignOut: () => void;
 };
 
@@ -42,9 +44,11 @@ export default function AppMenuDrawer({
   visible,
   activeTab,
   displayName,
+  isAdmin = false,
   onClose,
   onNavigate,
   onOpenNotifications,
+  onOpenAdmin,
   onSignOut,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -80,6 +84,10 @@ export default function AppMenuDrawer({
     }
     if (key === 'notifications') {
       onOpenNotifications();
+      return;
+    }
+    if (key === 'admin') {
+      onOpenAdmin?.();
       return;
     }
     onNavigate(key);
@@ -140,6 +148,21 @@ export default function AppMenuDrawer({
           })}
 
           <Text style={styles.sectionLabel}>CÀI ĐẶT</Text>
+          {isAdmin ? (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleItemPress('admin')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.iconWrap}>
+                <MaterialIcons name="admin-panel-settings" size={22} color={colors.primaryFixed} />
+              </View>
+              <View style={styles.menuTextWrap}>
+                <Text style={styles.menuLabel}>Quản trị CMS</Text>
+                <Text style={styles.menuSub}>Programs, exercises, foods...</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => handleItemPress('notifications')}

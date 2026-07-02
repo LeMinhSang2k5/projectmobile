@@ -24,6 +24,7 @@ import ProgramsScreen from './src/screens/ProgramsScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import AdminScreen from './src/screens/admin/AdminScreen';
 import { colors } from './src/theme/colors';
 import { supabase } from './utils/supabase';
 import { syncAllRemindersOnLaunch } from './src/services/notificationService';
@@ -43,6 +44,8 @@ export default function App() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [notificationSettingsVisible, setNotificationSettingsVisible] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminVisible, setAdminVisible] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -60,6 +63,8 @@ export default function App() {
         setAvatarUrl(null);
         setActiveTab('home');
         setSelectedProgramId(null);
+        setIsAdmin(false);
+        setAdminVisible(false);
       }
     });
 
@@ -73,7 +78,7 @@ export default function App() {
     const loadAccountState = async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('avatar_url, onboarding_completed, display_name')
+        .select('avatar_url, onboarding_completed, display_name, role')
         .eq('id', session.user.id)
         .maybeSingle();
       if (!active) return;
@@ -91,6 +96,7 @@ export default function App() {
       setSchemaIssue(null);
       setAvatarUrl(data?.avatar_url ?? null);
       setDisplayName(data?.display_name ?? null);
+      setIsAdmin(data?.role === 'admin');
       setOnboardingComplete(data?.onboarding_completed === true);
       if (data?.onboarding_completed) {
         syncAllRemindersOnLaunch(session.user.id).catch(console.error);
@@ -138,13 +144,19 @@ export default function App() {
       );
     }
 
+    if (adminVisible && isAdmin) {
+      return <AdminScreen onClose={() => setAdminVisible(false)} />;
+    }
+
     switch (activeTab) {
       case 'profile':
         return (
           <ProfileScreen
             userId={userId}
+            isAdmin={isAdmin}
             onAvatarUpdated={handleAvatarUpdated}
             onNavigateToNutrition={handleNavigateToNutrition}
+            onOpenAdmin={() => setAdminVisible(true)}
           />
         );
       case 'nutrition':
@@ -221,7 +233,7 @@ export default function App() {
           <View style={styles.body}>
             {userId ? renderScreen() : null}
           </View>
-          {!selectedProgramId && (
+          {!selectedProgramId && !adminVisible && (
             <BottomNav
               activeTab={activeTab}
               onTabChange={(tab) => {
@@ -236,9 +248,14 @@ export default function App() {
                 visible={menuVisible}
                 activeTab={activeTab}
                 displayName={displayName}
+                isAdmin={isAdmin}
                 onClose={() => setMenuVisible(false)}
                 onNavigate={setActiveTab}
                 onOpenNotifications={() => setNotificationSettingsVisible(true)}
+                onOpenAdmin={() => {
+                  setMenuVisible(false);
+                  setAdminVisible(true);
+                }}
                 onSignOut={() => void supabase.auth.signOut()}
               />
               <NotificationSettingsModal
