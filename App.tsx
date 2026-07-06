@@ -28,6 +28,7 @@ import AdminScreen from './src/screens/admin/AdminScreen';
 import { colors } from './src/theme/colors';
 import { supabase } from './utils/supabase';
 import { syncAllRemindersOnLaunch } from './src/services/notificationService';
+import { BottomNavContext } from './src/contexts/BottomNavContext';
 
 const MemoLoginScreen = memo(LoginScreen);
 
@@ -46,6 +47,7 @@ export default function App() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminVisible, setAdminVisible] = useState(false);
+  const [isBottomNavHidden, setBottomNavHidden] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -220,7 +222,8 @@ export default function App() {
           }}
         />
       ) : (
-        <SafeAreaView style={styles.container} edges={[]}>
+        <BottomNavContext.Provider value={{ isBottomNavHidden, setBottomNavHidden }}>
+          <SafeAreaView style={styles.container} edges={[]}>
           <StatusBar barStyle="light-content" backgroundColor={colors.surface} translucent={false} />
           <Header
             avatarUrl={avatarUrl}
@@ -266,6 +269,7 @@ export default function App() {
             </>
           ) : null}
         </SafeAreaView>
+        </BottomNavContext.Provider>
       )}
     </SafeAreaProvider>
   );

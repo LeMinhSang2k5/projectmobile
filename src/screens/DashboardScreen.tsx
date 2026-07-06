@@ -24,6 +24,7 @@ import {
   getNotificationPreferences,
   notifyBadgeEarned,
 } from '../services/notificationService';
+import { useHideOnScroll } from '../hooks/useHideOnScroll';
 import type { BadgeWithStatus, DashboardSummary } from '../types';
 
 type Props = {
@@ -52,6 +53,7 @@ export default function DashboardScreen({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const handleScroll = useHideOnScroll();
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -144,6 +146,8 @@ export default function DashboardScreen({
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

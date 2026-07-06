@@ -25,6 +25,7 @@ import { getTodayWater, addWater } from '../services/waterService';
 import { deleteUserAccount, exportUserData } from '../services/accountService';
 import { shareUserDataExcel } from '../lib/exportUserDataExcel';
 import { calculateAgeFromDate, toLocalDateString } from '../lib/dateUtils';
+import { useHideOnScroll } from '../hooks/useHideOnScroll';
 
 // ─── Tính tuổi từ ngày sinh ────────────────────────────────────────
 function calcAge(dob: Date): number {
@@ -278,6 +279,7 @@ export default function ProfileScreen({
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const handleScroll = useHideOnScroll();
 
   const fetchData = async () => {
     try {
@@ -464,6 +466,8 @@ export default function ProfileScreen({
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

@@ -53,6 +53,7 @@ import {
   getOverMacroLabels,
   getRemainingWaterMl,
 } from '../lib/limitWarnings';
+import { useHideOnScroll } from '../hooks/useHideOnScroll';
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
@@ -85,6 +86,7 @@ export default function NutritionScreen({ userId }: Props) {
   const [macroHintDismissed, setMacroHintDismissed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const mealJournalY = useRef(0);
+  const handleScroll = useHideOnScroll();
 
   const fetchData = useCallback(async () => {
     try {
@@ -289,6 +291,8 @@ export default function NutritionScreen({ userId }: Props) {
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

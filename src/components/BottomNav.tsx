@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/layout';
+import { useBottomNav } from '../contexts/BottomNavContext';
 
 export type Tab = 'home' | 'training' | 'nutrition' | 'profile';
 
@@ -21,9 +22,25 @@ const NAV_ITEMS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap; label: s
 
 export default function BottomNav({ activeTab, onTabChange }: Props) {
   const insets = useSafeAreaInsets();
+  const { isBottomNavHidden } = useBottomNav();
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(translateY, {
+      toValue: isBottomNavHidden ? 200 : 0, // 200 ensures it is completely off screen
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [isBottomNavHidden]);
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <Animated.View style={[
+      styles.wrapper, 
+      { 
+        paddingBottom: Math.max(insets.bottom, spacing.sm),
+        transform: [{ translateY }]
+      }
+    ]}>
       <View style={styles.container}>
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.key;
@@ -49,7 +66,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

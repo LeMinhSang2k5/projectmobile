@@ -12,6 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { fetchPrograms } from '../lib/workoutService';
+import { useHideOnScroll } from '../hooks/useHideOnScroll';
 import { Program } from '../types';
 
 const { width } = Dimensions.get('window');
@@ -82,6 +83,7 @@ export default function ProgramsScreen({ onSelectProgram }: Props) {
   const [loading, setLoading] = useState(true);
   const [showForceOffline, setShowForceOffline] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const handleScroll = useHideOnScroll();
 
   useEffect(() => {
     loadPrograms();
@@ -174,6 +176,8 @@ export default function ProgramsScreen({ onSelectProgram }: Props) {
           renderItem={({ item }) => <ProgramItem program={item} />}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         />
       )}
     </View>
