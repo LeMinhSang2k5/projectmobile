@@ -1,0 +1,503 @@
+% Pandoc LaTeX template — hỗ trợ tiếng Việt (XeLaTeX)
+\documentclass[12pt,a4paper]{article}
+
+% Font & ngôn ngữ
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{vietnamese}
+\setotherlanguage{english}
+\defaultfontfeatures{Ligatures=TeX}
+% Latin Modern được cài cùng TeX Live, có đủ glyph tiếng Việt và không phụ
+% thuộc font hệ điều hành. Code dùng font mono thật để sơ đồ/căn cột không lệch.
+\setmainfont{lmsans10-regular.otf}[
+  BoldFont = lmsans10-bold.otf,
+  ItalicFont = lmsans10-oblique.otf,
+  BoldItalicFont = lmsans10-boldoblique.otf
+]
+\setsansfont{lmsans10-regular.otf}[
+  BoldFont = lmsans10-bold.otf,
+  ItalicFont = lmsans10-oblique.otf,
+  BoldItalicFont = lmsans10-boldoblique.otf
+]
+\setmonofont{lmmonolt10-regular.otf}[
+  BoldFont = lmmonolt10-bold.otf,
+  ItalicFont = lmmonolt10-oblique.otf,
+  BoldItalicFont = lmmonolt10-boldoblique.otf,
+  Scale = MatchLowercase
+]
+
+% Layout
+\usepackage[margin=2.5cm, top=2.8cm, bottom=2.8cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\emergencystretch}{3em}
+\raggedbottom
+\usepackage{microtype}
+
+% Màu & link
+\usepackage{xcolor}
+\definecolor{linkcolor}{RGB}{45,90,30}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{accent}{RGB}{80,130,40}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linkcolor,
+  urlcolor=linkcolor,
+  citecolor=linkcolor,
+  pdfauthor={FitLife - Module Người 4},
+  pdftitle={Đặc tả Dashboard, Notification và Badges}
+}
+
+% Bảng
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{etoolbox}
+\renewcommand{\arraystretch}{1.3}
+\setlength{\tabcolsep}{4pt}
+\AtBeginEnvironment{longtable}{\small}
+% Fix pandoc 3.x table caption counter
+\newcounter{none}
+\renewcommand{\thenone}{}
+
+% Code listing — idiomatic mode dùng lstlisting (tự xuống dòng, không tràn lề)
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  rulecolor=\color{gray!40},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+% Pandoc 3.10 bọc inline code bằng \passthrough khi dùng idiomatic listings.
+\providecommand{\passthrough}[1]{#1}
+
+% UML diagrams (TikZ)
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.geometric,fit,backgrounds,arrows.meta,calc}
+\input{latex/diagrams/uml-styles.tex}
+
+% Pandoc list helper
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Pandoc variables
+\date{\today}
+
+\begin{document}
+
+\section{TÀI LIỆU ĐẶC TẢ CHỨC
+NĂNG}\label{tuxe0i-liux1ec7u-ux111ux1eb7c-tux1ea3-chux1ee9c-nux103ng}
+
+\subsection{Ứng dụng Di động Tập thể dục \& Sức khỏe
+(FitLife)}\label{ux1ee9ng-dux1ee5ng-di-ux111ux1ed9ng-tux1eadp-thux1ec3-dux1ee5c-sux1ee9c-khux1ecfe-fitlife}
+
+\textbf{Nền tảng:} React Native (Expo)\\
+\textbf{Backend:} Supabase (PostgreSQL, Auth, Storage)\\
+\textbf{Phiên bản tài liệu:} Cập nhật theo codebase hiện tại
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{1. Tổng quan ứng
+dụng}\label{tux1ed5ng-quan-ux1ee9ng-dux1ee5ng}
+
+Ứng dụng \textbf{FitLife} là giải pháp trên điện thoại thông minh giúp
+người dùng theo dõi chế độ tập luyện cá nhân hóa, quản lý dinh dưỡng,
+lượng nước uống hàng ngày và duy trì thói quen lành mạnh thông qua hệ
+thống nhắc nhở thông minh.
+
+Dữ liệu người dùng (hồ sơ, buổi tập, dinh dưỡng, nước uống, huy hiệu)
+được lưu trữ và đồng bộ trên \textbf{Supabase}. Chương trình tập, bài
+tập và thư viện món ăn được quản trị tập trung trên server; ứng dụng tải
+media minh họa (ảnh động GIF hoặc video MP4) theo thời gian thực khi
+người dùng mở buổi tập.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{2. Các chức năng chính của ứng
+dụng}\label{cuxe1c-chux1ee9c-nux103ng-chuxednh-cux1ee7a-ux1ee9ng-dux1ee5ng}
+
+\subsubsection{2.1. Luồng Đăng nhập, Đăng ký \& Khởi tạo Hồ sơ
+(Onboarding
+Flow)}\label{luux1ed3ng-ux111ux103ng-nhux1eadp-ux111ux103ng-kuxfd-khux1edfi-tux1ea1o-hux1ed3-sux1a1-onboarding-flow}
+
+Luồng này thu thập chỉ số cơ thể ban đầu để cá nhân hóa lộ trình tập
+luyện và dinh dưỡng.
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Giai đoạn / Màn hình
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Chi tiết các trường thông tin \& Tính năng
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Màn hình Đăng nhập / Đăng ký} & Đăng nhập hoặc đăng ký bằng
+\textbf{Email + Mật khẩu}. Hỗ trợ \textbf{Quên mật khẩu} (gửi email đặt
+lại qua Supabase Auth). Nút đăng nhập nhanh \textbf{Google} và
+\textbf{Apple} hiển thị trên giao diện nhưng hiện ở trạng thái
+\emph{đang phát triển}. \\
+\textbf{Đăng ký Tài khoản} & Nhập Email, Tạo Mật khẩu (tối thiểu
+\textbf{8 ký tự}, bao gồm \textbf{chữ hoa, số và ký tự đặc biệt}) và Xác
+nhận mật khẩu. \\
+\textbf{Onboarding --- Bước 1: Thông tin cá nhân} & Họ và tên, Ngày sinh
+(để tính tuổi), Giới tính (Nam / Nữ / Khác). \\
+\textbf{Onboarding --- Bước 2: Chỉ số cơ thể} & Chiều cao (cm) và Cân
+nặng (kg). Hệ thống tự động tính \textbf{BMI}, \textbf{BMR} (Mifflin-St
+Jeor) và \textbf{TDEE}. \\
+\textbf{Onboarding --- Bước 3: Mục tiêu \& Vận động} & Mục tiêu: Giảm
+cân, Tăng cơ, Duy trì, Cải thiện cardio, Linh hoạt. Mức vận động hàng
+tuần: Ít vận động → Rất nhiều (5 mức). Sau khi hoàn thành, cờ
+\texttt{onboarding\_completed} được lưu vào hồ sơ. \\
+\end{longtable}
+}
+
+\subsubsection{2.2. Chuỗi Ngày Tập liên tục
+(Streaks)}\label{chuux1ed7i-nguxe0y-tux1eadp-liuxean-tux1ee5c-streaks}
+
+Hệ thống theo dõi chuỗi ngày tập liên tiếp dựa trên việc hoàn thành buổi
+tập hàng ngày.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cơ chế hoạt động:} Khi người dùng hoàn thành buổi tập
+  (\texttt{complete\_workout\_session}), hệ thống cập nhật bảng
+  \texttt{user\_streaks}. Nếu tập vào ngày liên tiếp so với lần trước,
+  \textbf{Streak +1}. Nếu bỏ lỡ một ngày (không tập liên tiếp), chuỗi
+  \textbf{reset về 1} khi tập lại.
+\item
+  \textbf{Hiển thị:} Streak hiện tại, kỷ lục streak dài nhất trên tab
+  \textbf{Home} (Dashboard).
+\item
+  \textbf{Huy hiệu liên quan:} Kiên trì 3 ngày, Tuần vàng (7 ngày), Thép
+  không gỉ (30 ngày) --- xem mục 2.7.
+\end{itemize}
+
+\begin{quote}
+\textbf{Lưu ý:} Ứng dụng \textbf{không} khóa bài tập theo lịch từng ngày
+(daily unlock). Người dùng tự chọn chương trình tập bất kỳ lúc nào từ
+tab Training.
+\end{quote}
+
+\subsubsection{2.3. Chương trình Tập luyện \& Bài tập từ
+Server}\label{chux1b0ux1a1ng-truxecnh-tux1eadp-luyux1ec7n-buxe0i-tux1eadp-tux1eeb-server}
+
+Dữ liệu chương trình tập và bài tập được lưu trên Supabase
+(\texttt{programs}, \texttt{exercises}).
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Danh sách chương trình:} Tab \textbf{Training} hiển thị các
+  khóa tập từ server (tiêu đề, mô tả, cấp độ
+  Beginner/Intermediate/Advanced, ảnh thumbnail). Khi mất kết nối, ứng
+  dụng dùng \textbf{5 chương trình mẫu offline} dự phòng.
+\item
+  \textbf{Lịch ngang:} Calendar 7 ngày (3 ngày trước, hôm nay, 3 ngày
+  sau) để người dùng chọn ngày tham chiếu.
+\item
+  \textbf{Buổi tập chi tiết:} Mỗi chương trình gồm danh sách bài tập với
+  tên, thời lượng, \textbf{giá trị MET}, và \textbf{media\_url} (GIF
+  hoặc video MP4). Ứng dụng phát video lặp hoặc hiển thị ảnh động minh
+  họa tư thế.
+\item
+  \textbf{Luồng tập:} Đếm ngược thời gian từng bài → nghỉ giữa hiệp →
+  chuyển bài tiếp theo → hoàn thành buổi tập.
+\item
+  \textbf{Tính Calo:}
+  \texttt{Calo\ =\ MET\ ×\ cân\_nặng(kg)\ ×\ thời\_gian(giờ)}. Cân nặng
+  lấy từ hồ sơ người dùng.
+\end{itemize}
+
+\subsubsection{2.4. Nhắc nhở \& Thông báo
+(Notifications)}\label{nhux1eafc-nhux1edf-thuxf4ng-buxe1o-notifications}
+
+Giúp người dùng xây dựng tính kỷ luật, không bỏ lỡ lịch tập và sinh hoạt
+khoa học. Triển khai qua \textbf{expo-notifications} (local push
+notification).
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Loại nhắc
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mô tả
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Nhắc tập luyện} & Người dùng bật/tắt và chọn \textbf{giờ nhắc}
+(mặc định 06:30). Thông báo đẩy hàng ngày tại giờ đã chọn. \\
+\textbf{Nhắc uống nước} & Tự động nhắc mỗi \textbf{2 giờ} trong khung
+\textbf{07:00 -- 22:00} (các mốc: 7h, 9h, 11h, 13h, 15h, 17h, 19h, 21h).
+Bật/tắt từ tab Dinh dưỡng hoặc modal Cài đặt thông báo. \\
+\textbf{Thông báo huy hiệu} & Khi mở khóa huy hiệu mới, gửi thông báo
+(có thể tắt trong cài đặt). \\
+\end{longtable}
+}
+
+Cài đặt thông báo mở từ \textbf{nút chuông trên Dashboard} hoặc
+\textbf{menu 3 gạch → Thông báo}.
+
+\subsubsection{2.5. Định lượng Thức ăn \& Dinh dưỡng hàng ngày
+(Nutrition
+Tracker)}\label{ux111ux1ecbnh-lux1b0ux1ee3ng-thux1ee9c-ux103n-dinh-dux1b0ux1ee1ng-huxe0ng-nguxe0y-nutrition-tracker}
+
+Dựa trên TDEE và mục tiêu tập luyện, hệ thống tính lượng calo cần nạp
+trong ngày.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Mục tiêu calo:} TDEE điều chỉnh theo mục tiêu (ví dụ: Giảm cân
+  −400 kcal, Tăng cơ +300 kcal). Tối thiểu 1200 kcal/ngày.
+\item
+  \textbf{Phân bổ Macronutrients:} Protein \textbf{30\%}, Carbs
+  \textbf{45\%}, Fat \textbf{25\%} của tổng calo mục tiêu.
+\item
+  \textbf{Nhật ký ăn uống:} Thêm món từ thư viện server vào các bữa
+  \textbf{Sáng, Trưa, Tối, Snack}. Hệ thống tự cộng dồn calo và macro đã
+  nạp, hiển thị calo còn lại.
+\item
+  \textbf{Gợi ý món ăn:} Đề xuất món phù hợp theo từng bữa.
+\item
+  \textbf{Biểu đồ:} Vòng calo và biểu đồ tròn Protein / Carbs / Fat.
+\item
+  \textbf{Cảnh báo vượt ngưỡng:} Thông báo khi vượt mục tiêu calo hoặc
+  macro.
+\end{itemize}
+
+\subsubsection{2.6. Theo dõi Lượng nước uống hàng ngày (Water
+Tracker)}\label{theo-duxf5i-lux1b0ux1ee3ng-nux1b0ux1edbc-uux1ed1ng-huxe0ng-nguxe0y-water-tracker}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Công thức khuyến nghị:}
+  \texttt{Cân\ nặng\ (kg)\ ×\ 35\ ml\ =\ Lượng\ nước\ cần\ uống\ (ml/ngày)}.
+  Mặc định \textbf{2000 ml} khi chưa có cân nặng.
+\item
+  \textbf{Giao diện tương tác:} Thanh tiến độ trực quan. Mỗi lần uống
+  nước, chạm \textbf{+250 ml} hoặc \textbf{+500 ml} để cập nhật. Có tùy
+  chọn đặt lại về mục tiêu khi vượt ngưỡng.
+\item
+  \textbf{Vị trí hiển thị:} Tab \textbf{Dinh dưỡng}, tab \textbf{Cá
+  nhân}, và widget \textbf{Sức khỏe hôm nay} trên Dashboard.
+\end{itemize}
+
+\subsubsection{2.7. Hệ thống Huy hiệu
+(Badges)}\label{hux1ec7-thux1ed1ng-huy-hiux1ec7u-badges}
+
+Ứng dụng có \textbf{8 huy hiệu} mặc định, tự động kiểm tra và cấp khi
+đạt điều kiện:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Mã
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Tên
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Điều kiện
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{onboarding\_complete} & Khởi đầu & Hoàn thành onboarding \\
+\texttt{first\_workout} & Buổi tập đầu & Hoàn thành buổi tập đầu tiên \\
+\texttt{streak\_3} & Kiên trì 3 ngày & Streak tập 3 ngày liên tiếp \\
+\texttt{streak\_7} & Tuần vàng & Streak tập 7 ngày liên tiếp \\
+\texttt{streak\_30} & Thép không gỉ & Streak tập 30 ngày liên tiếp \\
+\texttt{water\_goal} & Hydration Pro & Đạt mục tiêu nước trong một
+ngày \\
+\texttt{nutrition\_goal} & Dinh dưỡng chuẩn & Đạt mục tiêu calo trong
+một ngày \\
+\texttt{burn\_500} & Đốt cháy & Đốt cháy 500+ kcal trong một ngày \\
+\end{longtable}
+}
+
+Huy hiệu hiển thị trên tab \textbf{Home}; huy hiệu mới có thể kèm thông
+báo push.
+
+\subsubsection{2.8. Quản trị \& Tiện ích bổ
+sung}\label{quux1ea3n-trux1ecb-tiux1ec7n-uxedch-bux1ed5-sung}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Tính năng
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mô tả
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Menu ứng dụng} & Drawer điều hướng nhanh giữa các tab, mở cài
+đặt thông báo, đăng xuất. \\
+\textbf{CMS Admin} & Tài khoản có \texttt{role\ =\ admin} truy cập màn
+hình quản trị nội dung (chương trình, bài tập, món ăn). \\
+\textbf{Chỉnh sửa hồ sơ} & Cập nhật tên, ngày sinh, mục tiêu, chiều cao,
+cân nặng, ảnh đại diện; hệ thống tự tính lại chỉ số sức khỏe. \\
+\textbf{Xuất dữ liệu} & Xuất toàn bộ dữ liệu cá nhân ra file
+\textbf{Excel (.xlsx)}. \\
+\textbf{Xóa tài khoản} & Xóa vĩnh viễn tài khoản và dữ liệu liên quan
+qua Edge Function. \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{3. Kiến trúc Giao diện Ứng dụng (UI
+Architecture)}\label{kiux1ebfn-truxfac-giao-diux1ec7n-ux1ee9ng-dux1ee5ng-ui-architecture}
+
+Ứng dụng dùng \textbf{Bottom Navigation Bar} với \textbf{4 tab} chính:
+
+\subsubsection{3.1. Tab Home (Dashboard)}\label{tab-home-dashboard}
+
+Hiển thị tổng quan trong ngày:
+
+\begin{itemize}
+\tightlist
+\item
+  Lời chào cá nhân hóa và ngày hiện tại
+\item
+  \textbf{Chỉ số nhanh:} Streak ngày, Calo đốt, Buổi tập, Kỷ lục streak
+\item
+  \textbf{Biểu đồ hoạt động 7 ngày} (số buổi tập theo ngày)
+\item
+  \textbf{Buổi tập} --- phím tắt vào tab Training
+\item
+  \textbf{Sức khỏe hôm nay} --- calo nạp, nước uống, macro; phím tắt vào
+  tab Dinh dưỡng
+\item
+  \textbf{Huy hiệu} --- lưới huy hiệu đã mở khóa / tổng số
+\item
+  Nút \textbf{chuông} mở cài đặt thông báo
+\end{itemize}
+
+\subsubsection{3.2. Tab Training (Lịch tập \& Chương
+trình)}\label{tab-training-lux1ecbch-tux1eadp-chux1b0ux1a1ng-truxecnh}
+
+\begin{itemize}
+\tightlist
+\item
+  Lịch ngang 7 ngày
+\item
+  Danh sách chương trình tập từ server (hoặc dữ liệu offline dự phòng)
+\item
+  Chạm chương trình → màn hình \textbf{Buổi tập chi tiết} (video/GIF,
+  timer, tính calo, hoàn thành buổi tập)
+\end{itemize}
+
+\begin{quote}
+Không có tab riêng ``Phòng tập'' / thư viện bài tập đơn lẻ theo nhóm cơ.
+Toàn bộ bài tập nằm trong từng chương trình.
+\end{quote}
+
+\subsubsection{3.3. Tab Nutrition (Dinh
+dưỡng)}\label{tab-nutrition-dinh-dux1b0ux1ee1ng}
+
+\begin{itemize}
+\tightlist
+\item
+  Vòng calo và biểu đồ macro
+\item
+  Theo dõi nước uống (+250 ml / +500 ml) và bật/tắt nhắc nước
+\item
+  Nhật ký ăn uống theo bữa (Sáng, Trưa, Tối, Snack)
+\item
+  Thêm món từ thư viện server, gợi ý món ăn
+\end{itemize}
+
+\subsubsection{3.4. Tab Profile (Cá
+nhân)}\label{tab-profile-cuxe1-nhuxe2n}
+
+\begin{itemize}
+\tightlist
+\item
+  Thông tin tài khoản và ảnh đại diện
+\item
+  Chỉnh sửa hồ sơ (tên, ngày sinh, mục tiêu, chiều cao, cân nặng)
+\item
+  Tóm tắt dinh dưỡng và nước uống hôm nay
+\item
+  Xuất dữ liệu Excel, xóa tài khoản
+\item
+  Truy cập \textbf{CMS Admin} (nếu là admin)
+\end{itemize}
+
+\subsubsection{3.5. Thành phần điều hướng
+chung}\label{thuxe0nh-phux1ea7n-ux111iux1ec1u-hux1b0ux1edbng-chung}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Header:} Avatar người dùng (vào Profile) và menu 3 gạch
+\item
+  \textbf{App Menu Drawer:} Điều hướng tab, thông báo, admin, đăng xuất
+\item
+  Bottom nav \textbf{ẩn tự động} khi cuộn xuống trên một số màn hình
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{4. Công thức sức khỏe
+chính}\label{cuxf4ng-thux1ee9c-sux1ee9c-khux1ecfe-chuxednh}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Chỉ số & Công thức \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+BMI & \texttt{cân\_nặng(kg)\ /\ chiều\_cao(m)²} \\
+BMR (Nam) & \texttt{10×kg\ +\ 6.25×cm\ −\ 5×tuổi\ +\ 5} \\
+BMR (Nữ) & \texttt{10×kg\ +\ 6.25×cm\ −\ 5×tuổi\ −\ 161} \\
+TDEE & \texttt{BMR\ ×\ hệ\_số\_vận\_động} (1.2 -- 1.9) \\
+Calo tập & \texttt{MET\ ×\ kg\ ×\ giờ} \\
+Nước/ngày & \texttt{kg\ ×\ 35\ ml} \\
+\end{longtable}
+}
+
+Chi tiết triển khai: \texttt{src/lib/healthCalculations.ts},
+\texttt{src/lib/workoutCalculations.ts}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\emph{Tài liệu đặc tả chức năng FitLife --- đồng bộ với codebase React
+Native + Supabase.}
+
+\end{document}
