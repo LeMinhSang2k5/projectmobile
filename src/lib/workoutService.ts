@@ -126,3 +126,25 @@ export const completeWorkoutSession = async (
   if (error) throw error;
   return typeof data === 'number' ? data : Number(data ?? 0);
 };
+
+export const getWorkoutHistory = async (userId: string): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('exercise_logs')
+    .select('workout_date')
+    .eq('user_id', userId)
+    .order('workout_date', { ascending: false });
+  
+  if (error) return [];
+  return Array.from(new Set(data.map((item: any) => item.workout_date)));
+};
+
+export const getUserStreak = async (userId: string): Promise<number> => {
+  const { data, error } = await supabase
+    .from('user_streaks')
+    .select('current_streak')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  if (error || !data) return 0;
+  return data.current_streak;
+};

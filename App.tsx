@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useCallback } from 'react';
+import React, { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -122,6 +122,18 @@ export default function App() {
     setActiveTab('training');
   }, []);
 
+  const handleCloseWorkout = useCallback(() => {
+    setSelectedProgramId(null);
+  }, []);
+
+  const handleWorkoutCompleted = useCallback(() => {
+    setDashboardRefreshKey(prev => prev + 1);
+  }, []);
+
+  const handleSelectProgram = useCallback((id: string) => {
+    setSelectedProgramId(id);
+  }, []);
+
   const [fontsLoaded] = useFonts({
     'Inter-Regular': Inter_400Regular,
     'Inter-Medium': Inter_500Medium,
@@ -133,19 +145,22 @@ export default function App() {
 
   const userId = session?.user?.id ?? null;
 
+  const workoutDetail = useMemo(() => {
+    if (!userId || !selectedProgramId) return null;
+    return (
+      <WorkoutDetailScreen
+        programId={selectedProgramId}
+        onClose={handleCloseWorkout}
+        userId={userId}
+        onCompleted={handleWorkoutCompleted}
+      />
+    );
+  }, [selectedProgramId, userId, handleCloseWorkout, handleWorkoutCompleted]);
+
   const renderScreen = () => {
     if (!userId) return null;
 
-    if (selectedProgramId) {
-      return (
-        <WorkoutDetailScreen
-          programId={selectedProgramId}
-          onClose={() => setSelectedProgramId(null)}
-          userId={userId}
-          onCompleted={() => setDashboardRefreshKey((value) => value + 1)}
-        />
-      );
-    }
+    if (selectedProgramId) return workoutDetail;
 
     if (adminVisible && isAdmin) {
       return <AdminScreen onClose={() => setAdminVisible(false)} />;
@@ -166,7 +181,7 @@ export default function App() {
         return <NutritionScreen userId={userId} />;
       case 'training':
         return (
-          <ProgramsScreen onSelectProgram={(id) => setSelectedProgramId(id)} />
+          <ProgramsScreen onSelectProgram={handleSelectProgram} />
         );
       default:
         return (
@@ -179,6 +194,8 @@ export default function App() {
         );
     }
   };
+
+  const isWorkoutActive = !!selectedProgramId;
 
   return (
     <SafeAreaProvider>
@@ -224,20 +241,25 @@ export default function App() {
         />
       ) : (
         <BottomNavContext.Provider value={{ isBottomNavHidden, setBottomNavHidden }}>
-          <SafeAreaView style={styles.container} edges={[]}>
-          <StatusBar barStyle="light-content" backgroundColor={colors.surface} translucent={false} />
-          <Header
-            avatarUrl={avatarUrl}
-            onAvatarPress={() => {
-              setMenuVisible(false);
-              setActiveTab('profile');
-            }}
-            onMenuPress={() => setMenuVisible(true)}
-          />
+          <SafeAreaView style={styles.container} edges={isWorkoutActive ? [] : ['top']}>
+          <StatusBar barStyle="light-content" backgroundColor={isWorkoutActive ? '#000' : colors.surface} translucent={isWorkoutActive} />
+          
+          {!isWorkoutActive && !adminVisible && (
+            <Header
+              avatarUrl={avatarUrl}
+              onAvatarPress={() => {
+                setMenuVisible(false);
+                setActiveTab('profile');
+              }}
+              onMenuPress={() => setMenuVisible(true)}
+            />
+          )}
+
           <View style={styles.body}>
             {userId ? renderScreen() : null}
           </View>
-          {!selectedProgramId && !adminVisible && (
+
+          {!isWorkoutActive && !adminVisible && (
             <BottomNav
               activeTab={activeTab}
               onTabChange={(tab) => {
@@ -246,6 +268,7 @@ export default function App() {
               }}
             />
           )}
+
           {userId ? (
             <>
               <AppMenuDrawer

@@ -1,5 +1,3 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 # dependencies
 node_modules/
 
@@ -9,9 +7,13 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Env files
+.env
+.env*.local
+
 # Native
+.idea/
 .kotlin/
-*.orig.*
 *.jks
 *.p8
 *.p12
@@ -26,15 +28,9 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# IDE
-.idea/
-
 # macOS
 .DS_Store
 *.pem
-
-# local env files
-.env*.local
 
 # typescript
 *.tsbuildinfo
@@ -43,5 +39,5 @@ yarn-error.*
 /ios
 /android
 
-# Supabase CLI local state
+# Supabase
 /supabase/.temp/

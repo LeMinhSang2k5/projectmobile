@@ -72,15 +72,16 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
   const [timer, setTimer] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isResting, setIsResting] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
   const [totalCalories, setTotalCalories] = useState(0);
   const [mediaError, setMediaError] = useState(false);
   const [weightKg, setWeightKg] = useState(65);
+  
   const processingRef = useRef(false);
   const loggedExerciseIdsRef = useRef(new Set<string>());
 
   const currentExercise = exercises[currentIndex];
   const mediaUrl = currentExercise?.media_url || PLACEHOLDER;
-  
   const isVideo = /\.(mp4|mov|m3u8|webm)(\?.*)?$/i.test(mediaUrl);
 
   const loadExercises = useCallback(async () => {
@@ -90,6 +91,7 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
     setTotalCalories(0);
     setIsResting(false);
     setIsPaused(false);
+    setIsFinished(false);
     loggedExerciseIdsRef.current.clear();
     try {
       const [data, profile] = await Promise.all([
@@ -121,8 +123,37 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
     setMediaError(false);
   }, [currentIndex, exercises]);
 
+  const handleFinishWorkout = useCallback(async (calories: number) => {
+    if (isFinished) return;
+    setIsFinished(true);
+    
+    try {
+      const streak = await completeWorkoutSession(programId, calories);
+      const streakMessage = streak ? ` Chuỗi hiện tại: ${streak} ngày.` : '';
+      
+      Alert.alert(
+        'Hoàn thành!',
+        `Bạn đã đốt cháy ${Math.round(calories)} kcal.${streakMessage}`,
+        [
+          { 
+            text: 'Xong', 
+            onPress: () => {
+              onCompleted?.();
+              onClose(); 
+            } 
+          }
+        ],
+        { cancelable: false }
+      );
+    } catch (e) {
+      setIsFinished(false);
+      processingRef.current = false;
+      Alert.alert('Lỗi', 'Không thể lưu kết quả tập luyện.');
+    }
+  }, [programId, onClose, onCompleted, isFinished]);
+
   const completeCurrentExercise = useCallback(async () => {
-    if (!currentExercise || processingRef.current) return;
+    if (!currentExercise || processingRef.current || isFinished) return;
     processingRef.current = true;
 
     const calories = calculateCalories(
@@ -137,6 +168,7 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
         await logExercise(userId, currentExercise.id, calories);
         loggedExerciseIdsRef.current.add(currentExercise.id);
       }
+      
       const newTotal = alreadyLogged
         ? totalCalories
         : Math.round((totalCalories + calories) * 100) / 100;
@@ -145,25 +177,17 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
       if (currentIndex < exercises.length - 1) {
         setIsResting(true);
         setTimer(15);
+        processingRef.current = false;
       } else {
-        const streak = await completeWorkoutSession(programId, newTotal);
-        onCompleted?.();
-        const streakMessage = streak ? ` Chuỗi hiện tại: ${streak} ngày.` : '';
-        Alert.alert(
-          'Hoàn thành!',
-          `Bạn đã đốt cháy ${Math.round(newTotal)} kcal.${streakMessage}`,
-          [{ text: 'Xong', onPress: onClose }],
-        );
+        await handleFinishWorkout(newTotal);
       }
     } catch (saveError) {
+      processingRef.current = false;
       setIsPaused(true);
-      const message = saveError instanceof Error ? saveError.message : 'Không thể lưu buổi tập.';
-      Alert.alert('Chưa lưu được kết quả', message, [
+      Alert.alert('Chưa lưu được kết quả', 'Có lỗi xảy ra, vui lòng thử lại.', [
         { text: 'Đóng', style: 'cancel' },
         { text: 'Thử lại', onPress: () => setIsPaused(false) },
       ]);
-    } finally {
-      processingRef.current = false;
     }
   }, [
     currentExercise,
@@ -172,19 +196,18 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
     totalCalories,
     currentIndex,
     exercises.length,
-    programId,
-    onCompleted,
-    onClose,
+    handleFinishWorkout,
+    isFinished
   ]);
 
   useEffect(() => {
-    if (isPaused || timer <= 0) return;
-    const timeout = setTimeout(() => setTimer((previous) => Math.max(0, previous - 1)), 1000);
+    if (isPaused || timer <= 0 || isFinished) return;
+    const timeout = setTimeout(() => setTimer((prev) => Math.max(0, prev - 1)), 1000);
     return () => clearTimeout(timeout);
-  }, [timer, isPaused]);
+  }, [timer, isPaused, isFinished]);
 
   useEffect(() => {
-    if (loading || isPaused || timer !== 0 || exercises.length === 0) return;
+    if (loading || isPaused || timer !== 0 || exercises.length === 0 || isFinished) return;
     if (isResting) finishRest();
     else void completeCurrentExercise();
   }, [
@@ -195,6 +218,7 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
     exercises.length,
     finishRest,
     completeCurrentExercise,
+    isFinished
   ]);
 
   if (loading) return <View style={styles.centerContainer}><ActivityIndicator size="large" color={colors.primaryFixed} /></View>;
@@ -238,7 +262,7 @@ export default function WorkoutDetailScreen({ programId, userId, onClose, onComp
             <ExerciseVideo
               key={mediaUrl}
               uri={mediaUrl}
-              isPaused={isPaused}
+              isPaused={isPaused || isFinished}
               onError={() => setMediaError(true)}
             />
           ) : (
