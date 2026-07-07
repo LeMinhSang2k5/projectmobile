@@ -1,0 +1,1410 @@
+% Pandoc LaTeX template — hỗ trợ tiếng Việt (XeLaTeX)
+\documentclass[12pt,a4paper]{article}
+
+% Font & ngôn ngữ
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{vietnamese}
+\setotherlanguage{english}
+\defaultfontfeatures{Ligatures=TeX}
+% Latin Modern được cài cùng TeX Live, có đủ glyph tiếng Việt và không phụ
+% thuộc font hệ điều hành. Code dùng font mono thật để sơ đồ/căn cột không lệch.
+\setmainfont{lmsans10-regular.otf}[
+  BoldFont = lmsans10-bold.otf,
+  ItalicFont = lmsans10-oblique.otf,
+  BoldItalicFont = lmsans10-boldoblique.otf
+]
+\setsansfont{lmsans10-regular.otf}[
+  BoldFont = lmsans10-bold.otf,
+  ItalicFont = lmsans10-oblique.otf,
+  BoldItalicFont = lmsans10-boldoblique.otf
+]
+\setmonofont{lmmonolt10-regular.otf}[
+  BoldFont = lmmonolt10-bold.otf,
+  ItalicFont = lmmonolt10-oblique.otf,
+  BoldItalicFont = lmmonolt10-boldoblique.otf,
+  Scale = MatchLowercase
+]
+
+% Layout
+\usepackage[margin=2.5cm, top=2.8cm, bottom=2.8cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\emergencystretch}{3em}
+\raggedbottom
+\usepackage{microtype}
+
+% Màu & link
+\usepackage{xcolor}
+\definecolor{linkcolor}{RGB}{45,90,30}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{accent}{RGB}{80,130,40}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linkcolor,
+  urlcolor=linkcolor,
+  citecolor=linkcolor,
+  pdfauthor={FitLife - Module Người 4},
+  pdftitle={Đặc tả Dashboard, Notification và Badges}
+}
+
+% Bảng
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{tabularx}
+\usepackage{etoolbox}
+\renewcommand{\arraystretch}{1.3}
+\setlength{\tabcolsep}{4pt}
+\AtBeginEnvironment{longtable}{\small}
+% Fix pandoc 3.x table caption counter
+\newcounter{none}
+\renewcommand{\thenone}{}
+
+% Code listing — idiomatic mode dùng lstlisting (tự xuống dòng, không tràn lề)
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  rulecolor=\color{gray!40},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+% Pandoc 3.10 bọc inline code bằng \passthrough khi dùng idiomatic listings.
+\providecommand{\passthrough}[1]{#1}
+
+% Mục lục — dùng mặc định của LaTeX (không cần package thêm)
+
+% Pandoc list helper
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Pandoc variables
+\title{Tài liệu Giải thích Module Dashboard, Notification và Badges}
+\author{FitLife --- Người 4}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\textbf{Dự án:} FitLife --- Ứng dụng tập luyện \& sức khỏe\\
+\textbf{Phạm vi:} Module của Người 4 (theo bản phân công nhóm)\\
+\textbf{Công nghệ:} React Native (Expo) + Supabase (PostgreSQL)
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Module này làm gì?}\label{module-nuxe0y-luxe0m-guxec}
+
+Module \textbf{Dashboard, Notification \& Badges} là phần giúp người
+dùng \textbf{nhìn tổng quan tiến độ}, \textbf{nhận nhắc nhở} và
+\textbf{được ghi nhận thành tích} khi tập luyện đều đặn.
+
+Gồm \textbf{3 chức năng chính:}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Chức năng
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Người dùng thấy gì
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mục đích
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Dashboard} & Tab Home: chuỗi tập, calo, số buổi tập, biểu đồ 7
+ngày, sức khỏe và huy hiệu & Tổng hợp số liệu quan trọng trên một màn
+hình \\
+\textbf{Notification} & Thông báo nhắc uống nước, nhắc tập, thông báo
+huy hiệu mới & Giúp user không quên tập và uống nước \\
+\textbf{Badges} & Lưới huy hiệu (Khởi đầu, Kiên trì 3 ngày, Đốt cháy 500
+kcal\ldots) & Gamification --- khuyến khích duy trì thói quen \\
+\end{longtable}
+}
+
+\textbf{Người 4 phụ trách cả 3 lớp:} - \textbf{Frontend} --- giao diện
+Dashboard, huy hiệu, cài đặt nhắc nhở - \textbf{Backend} --- API tổng
+hợp Dashboard, bảng huy hiệu, lưu cài đặt thông báo - \textbf{Test} ---
+kiểm thử thông báo, quyền OS, logic huy hiệu
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Kiến trúc tổng quan (dễ
+hiểu)}\label{kiux1ebfn-truxfac-tux1ed5ng-quan-dux1ec5-hiux1ec3u}
+
+Hãy tưởng tượng app như một nhà 3 tầng:
+
+\begin{lstlisting}
++------------------------------------------+
+|  TANG 1 - GIAO DIEN (man hinh user nhin) |
+|  DashboardScreen, BadgeGrid, Modal nhac  |
++----------------------+-------------------+
+                       | goi ham
++----------------------v-------------------+
+|  TANG 2 - SERVICE (xu ly nghiep vu)      |
+|  dashboardService, badgeService,         |
+|  notificationService, waterReminder      |
++----------------------+-------------------+
+                       | goi API / RPC
++----------------------v-------------------+
+|  TANG 3 - SUPABASE (luu tru & bao mat)   |
+|  PostgreSQL + RLS + RPC functions        |
++------------------------------------------+
+\end{lstlisting}
+
+\textbf{Quy tắc quan trọng:} - Màn hình \textbf{không} gọi database trực
+tiếp --- luôn qua \textbf{service}. - Logic tính toán thuần (vd: đủ điều
+kiện huy hiệu chưa?) nằm trong \textbf{\passthrough{\lstinline!lib/!}}
+để dễ test. - Mỗi user \textbf{chỉ thấy dữ liệu của mình} nhờ RLS (Row
+Level Security) trên Supabase.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Dashboard (Trang chủ tổng
+quan)}\label{dashboard-trang-chux1ee7-tux1ed5ng-quan}
+
+\subsubsection{User thấy gì trên
+Dashboard?}\label{user-thux1ea5y-guxec-truxean-dashboard}
+
+Khi mở tab \textbf{Home}, màn hình hiển thị:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Lưới chỉ số nhanh} - streak hiện tại, calo đốt hôm nay, số
+  buổi tập hôm nay và streak dài nhất.
+\item
+  \textbf{Biểu đồ 7 ngày} --- Hoạt động tập luyện trong tuần qua (mỗi
+  cột = 1 ngày)
+\item
+  \textbf{Thẻ buổi tập} - hiện đang là dữ liệu trình diễn cố định
+  (\passthrough{\lstinline!Power Strength II!}, 12/24, 50\%), chưa đọc
+  chương trình hiện tại từ database.
+\item
+  \textbf{Sức khỏe hôm nay} - giờ nhắc tập, calo nạp, nước và macro dinh
+  dưỡng.
+\item
+  \textbf{Huy hiệu} - các badge đã đạt (sáng) và chưa đạt (mờ).
+\end{enumerate}
+
+Kéo xuống để \textbf{làm mới} (pull-to-refresh). Sau khi hoàn thành buổi
+tập, Dashboard \textbf{tự cập nhật} số liệu mới.
+
+\subsubsection{Dữ liệu lấy từ
+đâu?}\label{dux1eef-liux1ec7u-lux1ea5y-tux1eeb-ux111uxe2u}
+
+Riêng phần \textbf{số liệu tổng quan}, app ưu tiên một RPC trên server
+thay vì đọc từng bảng:
+
+\textbf{\passthrough{\lstinline!get\_dashboard\_summary()!}} --- hàm
+PostgreSQL trả về JSON gồm:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4706}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5294}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Trường
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Ý nghĩa
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\passthrough{\lstinline!display\_name!} & Tên hiển thị \\
+\passthrough{\lstinline!current\_streak!} & Chuỗi ngày tập liên tiếp
+hiện tại \\
+\passthrough{\lstinline!longest\_streak!} & Kỷ lục chuỗi dài nhất \\
+\passthrough{\lstinline!calories\_burned\_today!} & Calo đốt hôm nay \\
+\passthrough{\lstinline!workouts\_today!} & Số buổi tập hôm nay \\
+\passthrough{\lstinline!weekly\_workouts!} & Mảng 7 ngày: mỗi ngày có
+\passthrough{\lstinline!date!}, \passthrough{\lstinline!workouts!},
+\passthrough{\lstinline!calories\_burned!} \\
+\passthrough{\lstinline!wakeup\_time!} & Giờ dậy (dùng cho nhắc tập) \\
+Các cờ \passthrough{\lstinline!*\_reminder\_enabled!} & Đã bật nhắc
+nước/tập/badge chưa \\
+\end{longtable}
+}
+
+\textbf{Ví dụ JSON trả về:}
+
+\begin{lstlisting}
+{
+  "display_name": "Minh Sang",
+  "current_streak": 3,
+  "longest_streak": 5,
+  "calories_burned_today": 320,
+  "workouts_today": 1,
+  "weekly_workouts": [
+    { "date": "2026-06-24", "workouts": 0, "calories_burned": 0 },
+    { "date": "2026-06-25", "workouts": 1, "calories_burned": 280 },
+    { "date": "2026-06-26", "workouts": 0, "calories_burned": 0 },
+    { "date": "2026-06-27", "workouts": 1, "calories_burned": 310 },
+    { "date": "2026-06-28", "workouts": 1, "calories_burned": 290 },
+    { "date": "2026-06-29", "workouts": 0, "calories_burned": 0 },
+    { "date": "2026-06-30", "workouts": 1, "calories_burned": 320 }
+  ],
+  "wakeup_time": "06:30",
+  "water_reminder_enabled": true,
+  "workout_reminder_enabled": false,
+  "badge_notifications_enabled": true
+}
+
+\end{lstlisting}
+
+Dashboard vẫn gọi thêm luồng huy hiệu và cài đặt thông báo song song; vì
+vậy không nên hiểu là toàn bộ màn hình chỉ có đúng một request.
+
+\subsubsection{Biểu đồ 7 ngày hoạt động thế
+nào?}\label{biux1ec3u-ux111ux1ed3-7-nguxe0y-houx1ea1t-ux111ux1ed9ng-thux1ebf-nuxe0o}
+
+\textbf{Vấn đề đã gặp:} Khi user chưa tập buổi nào, biểu đồ hiển thị cột
+rất mờ --- trông như lỗi.
+
+\textbf{Cách xử lý:} - Server luôn trả \textbf{đủ 7 ngày} (kể cả ngày
+không tập = 0 buổi, 0 calo). - Client chuẩn hóa lại qua hàm
+\passthrough{\lstinline!normalizeWeeklyWorkouts()!} --- khớp đúng ngày,
+điền 0 nếu thiếu. - Khi chưa có buổi tập nào -\textgreater{} hiển thị
+thông báo \textbf{``Chưa có buổi tập nào''} thay vì cột trống mờ. - Ngày
+hôm nay được \textbf{highlight} màu xanh lá; nhãn CN-T7 luôn hiển thị.
+
+\textbf{Lưu ý múi giờ:} RPC dùng \passthrough{\lstinline!current\_date!}
+theo timezone của database, còn client tạo khung 7 ngày theo timezone
+thiết bị. Nếu hai timezone khác nhau, dữ liệu quanh nửa đêm có thể lệch
+một ngày. Cần thống nhất timezone hoặc truyền ngày local vào RPC nếu
+muốn xử lý triệt để.
+
+\subsubsection{Nếu RPC lỗi thì
+sao?}\label{nux1ebfu-rpc-lux1ed7i-thuxec-sao}
+
+App thử \textbf{phương án dự phòng (fallback):}
+\passthrough{\lstinline!dashboardService!} đọc
+\passthrough{\lstinline!profiles!},
+\passthrough{\lstinline!user\_streaks!} và
+\passthrough{\lstinline!workout\_sessions!} rồi gom số liệu giống RPC.
+Fallback hữu ích khi RPC chưa tồn tại hoặc trả lỗi, nhưng không bảo đảm
+cứu được trường hợp mất mạng vì các truy vấn dự phòng cũng cần Supabase.
+
+\subsubsection{File code liên quan}\label{file-code-liuxean-quan}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+File
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Vai trò
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\passthrough{\lstinline!src/screens/DashboardScreen.tsx!} & Màn hình
+chính, gọi load dữ liệu \\
+\passthrough{\lstinline!src/services/dashboardService.ts!} & Gọi RPC +
+chuẩn hóa 7 ngày \\
+\passthrough{\lstinline!src/components/StatsGrid.tsx!} & Thẻ sức khỏe:
+giờ nhắc, dinh dưỡng, nước và macro \\
+\passthrough{\lstinline!src/components/WeeklyProgressChart.tsx!} & Biểu
+đồ cột 7 ngày \\
+\passthrough{\lstinline!src/components/WorkoutCard.tsx!} & Thẻ buổi tập
+trình diễn; nội dung hiện đang hard-code \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Badges (Huy hiệu thành
+tích)}\label{badges-huy-hiux1ec7u-thuxe0nh-tuxedch}
+
+\subsubsection{Huy hiệu là gì?}\label{huy-hiux1ec7u-luxe0-guxec}
+
+Giống huy chương trong game: khi user đạt mốc nhất định, app \textbf{tự
+cấp huy hiệu} và hiển thị sáng trên Dashboard.
+
+\subsubsection{Danh sách 8 huy hiệu mặc
+định}\label{danh-suxe1ch-8-huy-hiux1ec7u-mux1eb7c-ux111ux1ecbnh}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Tên & Điều kiện đạt \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Khởi đầu} & Hoàn thành onboarding lần đầu \\
+\textbf{Buổi tập đầu} & Hoàn thành 1 buổi tập \\
+\textbf{Kiên trì 3 ngày} & Tập liên tiếp 3 ngày (streak \textgreater=
+3) \\
+\textbf{Tuần vàng} & Tập liên tiếp 7 ngày \\
+\textbf{Thép không gỉ} & Tập liên tiếp 30 ngày \\
+\textbf{Hydration Pro} & Đạt mục tiêu uống nước trong 1 ngày \\
+\textbf{Dinh dưỡng chuẩn} & Đạt mục tiêu calo ăn trong 1 ngày \\
+\textbf{Đốt cháy} & Đốt \textgreater= 500 kcal trong một ngày \\
+\end{longtable}
+}
+
+\subsubsection{Cơ chế cấp huy hiệu (từng
+bước)}\label{cux1a1-chux1ebf-cux1ea5p-huy-hiux1ec7u-tux1eebng-bux1b0ux1edbc}
+
+\begin{lstlisting}
+Moi lan mo Dashboard
+    |
+    v
+syncUserBadges(userId)
+    |
+    |-> Thu thap thong ke user:
+    |     - Da onboarding chua?
+    |     - Tong so buoi tap?
+    |     - Streak hien tai?
+    |     - Bao nhieu ngay dat muc tieu nuoc/calo?
+    |     - Ngay dot calo nhieu nhat?
+    |
+    |-> So sanh voi tung huy hieu (ham isBadgeEarned)
+    |
+    |-> Huy hieu du dieu kien ma chua co -> INSERT vao user_badges
+    |
+    \-> Tra danh sach badge (da dat / chua dat) cho UI
+\end{lstlisting}
+
+\textbf{Lưu ý:} Unique constraint
+\passthrough{\lstinline!(user\_id, badge\_id)!} bảo đảm mỗi huy hiệu chỉ
+được lưu một lần. Service bỏ qua riêng lỗi
+\passthrough{\lstinline!23505!} khi hai lần đồng bộ cùng insert một
+badge; các lỗi insert khác được ghi cảnh báo.
+
+\subsubsection{Cấu trúc database}\label{cux1ea5u-truxfac-database}
+
+\textbf{Bảng \passthrough{\lstinline!badges!}} --- danh mục huy hiệu
+(dùng chung cho mọi user): - \passthrough{\lstinline!code!} --- mã cố
+định (vd: \passthrough{\lstinline!streak\_7!}) -
+\passthrough{\lstinline!title!}, \passthrough{\lstinline!description!}
+--- tên và mô tả hiển thị - \passthrough{\lstinline!criteria\_type!} ---
+loại điều kiện (streak, workout\_sessions, \ldots) -
+\passthrough{\lstinline!criteria\_value!} --- ngưỡng (vd: 7 ngày)
+
+\textbf{Bảng \passthrough{\lstinline!user\_badges!}} --- huy hiệu user
+đã đạt: - \passthrough{\lstinline!user\_id!} +
+\passthrough{\lstinline!badge\_id!} --- mỗi cặp chỉ có 1 lần -
+\passthrough{\lstinline!earned\_at!} --- thời điểm đạt
+
+\subsubsection{File code liên quan}\label{file-code-liuxean-quan-1}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+File
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Vai trò
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\passthrough{\lstinline!src/services/badgeService.ts!} & Đồng bộ và cấp
+huy hiệu \\
+\passthrough{\lstinline!src/lib/badgeCalculations.ts!} & Logic kiểm tra
+đủ điều kiện \\
+\passthrough{\lstinline!src/lib/badgeCatalog.ts!} & Danh mục fallback 4
+badge khi không tải được bảng \passthrough{\lstinline!badges!} \\
+\passthrough{\lstinline!src/components/BadgeGrid.tsx!} & Hiển thị lưới
+huy hiệu \\
+\passthrough{\lstinline!src/lib/\_\_tests\_\_/badgeLogic.test.ts!} &
+Unit test logic huy hiệu \\
+\end{longtable}
+}
+
+Danh mục chính trong migration có \textbf{8 badge}, nhưng
+\passthrough{\lstinline!FALLBACK\_BADGES!} hiện chỉ có \textbf{4 badge
+đầu}. Fallback này cũng vẫn cần các truy vấn Supabase để tính thống kê,
+nên không phải chế độ offline hoàn chỉnh.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Notification (Thông báo \& nhắc
+nhở)}\label{notification-thuxf4ng-buxe1o-nhux1eafc-nhux1edf}
+
+\subsubsection{Ba loại thông báo}\label{ba-loux1ea1i-thuxf4ng-buxe1o}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2400}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5200}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2400}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Loại
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Khi nào bắn
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Lịch
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Nhắc uống nước} & User bật trong cài đặt & 8 mốc/ngày: 7h, 9h,
+11h, 13h, 15h, 17h, 19h, 21h \\
+\textbf{Nhắc tập luyện} & User bật trong cài đặt & Đúng giờ
+\passthrough{\lstinline!wakeup\_time!} user chọn (vd 6:30 sáng) \\
+\textbf{Huy hiệu mới} & Dashboard phát hiện badge đạt mà state trước đó
+chưa có & Local notification ngay lập tức \\
+\end{longtable}
+}
+
+\subsubsection{User bật/tắt ở
+đâu?}\label{user-bux1eadttux1eaft-ux1edf-ux111uxe2u}
+
+User có thể mở \passthrough{\lstinline!NotificationSettingsModal!} từ
+menu \textbf{3 gạch \textgreater{} Thông báo} hoặc nút chuông trên
+Dashboard:
+
+\begin{itemize}
+\tightlist
+\item
+  Công tắc nhắc uống nước
+\item
+  Công tắc nhắc tập luyện (+ chọn giờ)
+\item
+  Công tắc thông báo huy hiệu
+\end{itemize}
+
+Ba cờ bật/tắt và \passthrough{\lstinline!wakeup\_time!} được lưu trong
+\textbf{\passthrough{\lstinline!profiles!}}. Cờ có thể đồng bộ giữa
+thiết bị, nhưng quyền OS và id lịch thông báo nằm cục bộ trên từng máy
+trong AsyncStorage.
+
+\subsubsection{Luồng bật nhắc tập (ví
+dụ)}\label{luux1ed3ng-bux1eadt-nhux1eafc-tux1eadp-vuxed-dux1ee5}
+
+\begin{lstlisting}
+User bat "Nhac tap luyen"
+    |
+    v
+App xin quyen thong bao tu he dieu hanh (iOS/Android)
+    |
+    +-- User tu choi -> bao loi, khong bat
+    |
+    \-- User dong y
+          |
+          v
+    Lap lich thong bao lap hang ngay dung gio wakeup_time
+          |
+          v
+    Luu id thong bao vao AsyncStorage (de huy sau nay)
+          |
+          v
+    Ghi workout_reminder_enabled = true vao profiles
+\end{lstlisting}
+
+Mỗi ngày đúng giờ, điện thoại hiển thị: \textbf{``Giờ tập luyện --- Đã
+đến giờ tập!''}
+
+\subsubsection{Lưu ý quan trọng về Expo
+Go}\label{lux1b0u-uxfd-quan-trux1ecdng-vux1ec1-expo-go}
+
+\textbf{Thông báo KHÔNG hoạt động trên Expo Go} (app test qua QR code).
+Chỉ chạy trên: - \textbf{Development build} (build riêng qua EAS) -
+\textbf{Bản release} (APK/IPA cài trên máy)
+
+Code xử lý an toàn: trên Expo Go, module thông báo \textbf{không load}
+--- app không crash, chỉ hiển thị thông báo hướng dẫn khi user cố bật
+nhắc.
+
+\subsubsection{Khôi phục nhắc khi mở lại
+app}\label{khuxf4i-phux1ee5c-nhux1eafc-khi-mux1edf-lux1ea1i-app}
+
+Sau khi đăng nhập và hoàn thành onboarding,
+\passthrough{\lstinline!App.tsx!} gọi
+\passthrough{\lstinline!syncAllRemindersOnLaunch()!}: - Đọc cờ từ
+\passthrough{\lstinline!profiles!} (user đã bật nhắc nước/tập chưa) -
+Nếu đã bật -\textgreater{} đặt lại lịch thông báo trên thiết bị
+
+Sau khi cài lại hoặc xóa dữ liệu, app sẽ \textbf{thử} tạo lại lịch từ cờ
+server. Việc khôi phục còn phụ thuộc quyền thông báo trên thiết bị và
+kết nối Supabase.
+
+\textbf{Giới hạn hiện tại của thông báo badge:}
+\passthrough{\lstinline!notifyBadgeEarned()!} không tự xin quyền OS.
+Ngoài ra, state badge ban đầu là mảng rỗng nên lần mount Dashboard đầu
+tiên có thể coi mọi badge đã đạt là ``mới'' và bắn lại thông báo. Muốn
+đúng nghĩa ``chỉ một lần'', cần so sánh với tập badge trước khi gọi
+\passthrough{\lstinline!syncUserBadges!} hoặc dùng danh sách id vừa
+insert.
+
+\subsubsection{File code liên quan}\label{file-code-liuxean-quan-2}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+File
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Vai trò
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\passthrough{\lstinline!src/services/notificationService.ts!} & Nhắc
+tập, prefs, thông báo badge \\
+\passthrough{\lstinline!src/services/waterReminderService.ts!} & Nhắc
+uống nước (8 mốc) \\
+\passthrough{\lstinline!src/components/NotificationSettingsModal.tsx!} &
+Giao diện bật/tắt \\
+\passthrough{\lstinline!src/components/AppMenuDrawer.tsx!} & Menu mở
+modal nhắc nhở \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Luồng hoạt động tổng
+hợp}\label{luux1ed3ng-houx1ea1t-ux111ux1ed9ng-tux1ed5ng-hux1ee3p}
+
+\subsubsection{Kịch bản A: User mở app buổi
+sáng}\label{kux1ecbch-bux1ea3n-a-user-mux1edf-app-buux1ed5i-suxe1ng}
+
+\begin{lstlisting}
+1. Dang nhap -> da onboarding
+2. App dong bo nhac nho (neu da bat truoc do)
+3. Vao tab Home (Dashboard)
+4. Tai song song:
+   • So lieu Dashboard (RPC)
+   • Dong bo huy hieu (cap moi neu du dieu kien)
+   • Doc cai dat thong bao
+5. Hien thi: calo, bieu do 7 ngay, huy hieu
+6. Neu state truoc chua co badge dat -> thu phat local notification "Ban vua mo khoa ..."
+\end{lstlisting}
+
+\subsubsection{Kịch bản B: User hoàn thành buổi
+tập}\label{kux1ecbch-bux1ea3n-b-user-houxe0n-thuxe0nh-buux1ed5i-tux1eadp}
+
+\begin{lstlisting}
+1. Lam xong bai tap cuoi trong WorkoutDetailScreen
+2. Server ghi workout_session + cap nhat streak
+3. App tang refreshKey -> Dashboard tai lai
+4. Bieu do them cot hom nay, calo tang
+5. syncUserBadges co the cap "Buoi tap dau", "Kien tri 3 ngay"...
+6. Thu phat thong bao huy hieu (neu bat; hien co rui ro ban lai khi mount)
+\end{lstlisting}
+
+\subsubsection{Kịch bản C: User bật nhắc uống
+nước}\label{kux1ecbch-bux1ea3n-c-user-bux1eadt-nhux1eafc-uux1ed1ng-nux1b0ux1edbc}
+
+\begin{lstlisting}
+1. Menu 3 gach -> Thong bao -> Bat "Nhac uong nuoc"
+2. Xin quyen OS -> lap 8 thong bao lap ngay
+3. Luu co water_reminder_enabled = true
+4. Tu 7h-21h, moi 2 tieng nhan: "Da den gio uong nuoc!"
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Backend (Database)}\label{backend-database}
+
+\subsubsection{Migration cần chạy}\label{migration-cux1ea7n-chux1ea1y}
+
+File:
+\passthrough{\lstinline!supabase/migrations/20260627200000\_dashboard\_badges\_notifications.sql!}
+
+\textbf{Phải chạy SAU} migration workout (tạo bảng
+\passthrough{\lstinline!profiles!},
+\passthrough{\lstinline!workout\_sessions!},
+\passthrough{\lstinline!user\_streaks!}).
+
+Thứ tự đầy đủ:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.2727}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.7273}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Bước
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+File migration
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+1 &
+\passthrough{\lstinline!20260627000000\_nutrition\_water\_health.sql!} \\
+2 &
+\passthrough{\lstinline!20260627173357\_workout\_onboarding\_atomic\_updates.sql!} \\
+3 &
+\textbf{\passthrough{\lstinline!20260627200000\_dashboard\_badges\_notifications.sql!}}
+\textless- module này \\
+4 &
+\passthrough{\lstinline!20260701100000\_add\_new\_programs\_v2.sql!} \\
+\end{longtable}
+}
+
+\subsubsection{Bảng và cột module tạo
+thêm}\label{bux1ea3ng-vuxe0-cux1ed9t-module-tux1ea1o-thuxeam}
+
+\textbf{Mở rộng \passthrough{\lstinline!profiles!}:} -
+\passthrough{\lstinline!workout\_reminder\_enabled!} --- bật nhắc tập
+(mặc định: tắt) -
+\passthrough{\lstinline!badge\_notifications\_enabled!} --- thông báo
+huy hiệu (mặc định: bật)
+
+\textbf{Bảng mới:} - \passthrough{\lstinline!badges!} --- 8 huy hiệu mặc
+định - \passthrough{\lstinline!user\_badges!} --- huy hiệu user đã đạt
+
+\textbf{Hàm RPC mới:} -
+\passthrough{\lstinline!get\_dashboard\_summary()!} --- trả JSON tổng
+hợp Dashboard
+
+\subsubsection{Bảo mật}\label{bux1ea3o-mux1eadt}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{RLS:} User chỉ xem/cấp huy hiệu của chính mình; danh mục
+  \passthrough{\lstinline!badges!} chỉ role
+  \passthrough{\lstinline!authenticated!} được đọc.
+\item
+  \textbf{RPC:} Chạy với quyền người gọi
+  (\passthrough{\lstinline!SECURITY INVOKER!}), từ chối nếu chưa đăng
+  nhập.
+\item
+  Mỗi user \textbf{không thể} xem streak/calo/huy hiệu của user khác.
+\item
+  Migration đã có \passthrough{\lstinline!GRANT!} tường minh cho Data
+  API, phù hợp với thay đổi mặc định của Supabase năm 2026.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Kiểm thử}\label{kiux1ec3m-thux1eed}
+
+\subsubsection{Lệnh chạy test tự
+động}\label{lux1ec7nh-chux1ea1y-test-tux1ef1-ux111ux1ed9ng}
+
+\begin{lstlisting}[language=bash]
+npm run test:badges    # test logic huy hieu
+npm run test:weekly    # test normalizeWeeklyWorkouts
+npm test               # chay tat ca test
+npm run typecheck      # kiem tra TypeScript
+
+\end{lstlisting}
+
+\subsubsection{Checklist test thủ
+công}\label{checklist-test-thux1ee7-cuxf4ng}
+
+\textbf{Dashboard:} - {[} {]} User mới (0 buổi tập): biểu đồ hiển thị
+``Chưa có buổi tập'', không cột mờ - {[} {]} Có buổi tập: cột đúng ngày,
+hôm nay highlight xanh - {[} {]} Kéo xuống refresh -\textgreater{} số
+liệu cập nhật - {[} {]} Sau khi tập xong -\textgreater{} Dashboard tự
+refresh
+
+\textbf{Huy hiệu:} - {[} {]} Tập buổi đầu -\textgreater{} nhận ``Buổi
+tập đầu'' - {[} {]} Streak 3 ngày -\textgreater{} nhận ``Kiên trì 3
+ngày'' - {[} {]} Huy hiệu đã đạt sáng, chưa đạt mờ
+
+\textbf{Thông báo:} - {[} {]} Expo Go: bật nhắc -\textgreater{} báo lỗi
+hướng dẫn, không crash - {[} {]} Dev build: bật nhắc nước
+-\textgreater{} nhận đúng 8 mốc - {[} {]} Dev build: bật nhắc tập
+-\textgreater{} nhận đúng giờ đã chọn - {[} {]} Đạt huy hiệu mới + bật
+thông báo badge -\textgreater{} có thông báo đẩy - {[} {]} Mount lại
+Dashboard không bắn lại các badge đã đạt từ trước - {[} {]} Từ chối
+quyền OS -\textgreater{} cờ server và lịch local không rơi vào trạng
+thái lệch nhau - {[} {]} Kiểm tra dữ liệu 7 ngày quanh 00:00 khi
+timezone database khác timezone thiết bị
+
+\textbf{Phạm vi test tự động hiện tại:}
+\passthrough{\lstinline!badgeLogic.test.ts!} mới kiểm tra 2 trường hợp
+của badge streak (đạt/chưa đạt mốc 3). Chưa có test tự động cho 5 loại
+điều kiện còn lại, RPC/fallback, RLS, lịch thông báo và tình huống đồng
+bộ cạnh tranh.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Tóm tắt nhanh}\label{tuxf3m-tux1eaft-nhanh}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.3913}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6087}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Câu hỏi
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Trả lời ngắn
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Dashboard lấy data từ đâu? & Số liệu chính từ RPC
+\passthrough{\lstinline!get\_dashboard\_summary()!}; badge và prefs là
+các request riêng \\
+Huy hiệu cấp khi nào? & Mỗi lần mở Dashboard,
+\passthrough{\lstinline!syncUserBadges!} kiểm tra và cấp tự động \\
+Nhắc nhở lưu ở đâu? & Cờ/giờ trong \passthrough{\lstinline!profiles!};
+id lịch và quyền OS ở từng thiết bị \\
+Tại sao Expo Go không có thông báo? & Giới hạn của Expo Go --- cần
+development build \\
+Biểu đồ 7 ngày trống? & Đã fix: empty state + luôn đủ 7 ngày từ
+server \\
+File migration module? &
+\passthrough{\lstinline!20260627200000\_dashboard\_badges\_notifications.sql!} \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Giải thích code \& hàm chi
+tiết}\label{giux1ea3i-thuxedch-code-huxe0m-chi-tiux1ebft}
+
+Phần này giải thích \textbf{từng hàm quan trọng}: đầu vào, đầu ra, từng
+bước xử lý và lý do thiết kế.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{getDashboardSummary(userId)} ---
+\texttt{dashboardService.ts}}{getDashboardSummary(userId) --- dashboardService.ts}}\label{getdashboardsummaryuserid-dashboardservice.ts}
+
+\textbf{Mục đích:} Lấy toàn bộ số liệu Dashboard trong một lần gọi.
+
+RPC tự lấy user từ JWT bằng \passthrough{\lstinline!auth.uid()!}; tham
+số \passthrough{\lstinline!userId!} chỉ được dùng khi chuyển sang
+fallback client.
+
+\textbf{Code:}
+
+\begin{lstlisting}
+export async function getDashboardSummary(userId: string): Promise<DashboardSummary> {
+  const { data, error } = await supabase.rpc('get_dashboard_summary');
+  if (!error && data) {
+    const summary = data as DashboardSummary;
+    return {
+      ...summary,
+      weekly_workouts: normalizeWeeklyWorkouts(summary.weekly_workouts),
+    };
+  }
+  return buildDashboardSummaryClient(userId);
+}
+
+\end{lstlisting}
+
+\textbf{Cách hoạt động (từng bước):}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \passthrough{\lstinline!supabase.rpc('get\_dashboard\_summary')!} gọi
+  hàm PostgreSQL; Supabase client gửi JWT của session hiện tại.
+\item
+  Khi có \passthrough{\lstinline!data!} và không có
+  \passthrough{\lstinline!error!}, app dùng kết quả RPC.
+\item
+  \passthrough{\lstinline!normalizeWeeklyWorkouts(...)!} chuẩn hóa mảng
+  7 ngày trước khi render.
+\item
+  Khi RPC lỗi hoặc không có data,
+  \passthrough{\lstinline!buildDashboardSummaryClient(userId)!} thử đọc
+  từng bảng và gom số liệu.
+\end{enumerate}
+
+\textbf{Tại sao có fallback?} User vẫn có thể thấy Dashboard khi
+migration RPC chưa chạy. Nếu nguyên nhân là mất mạng hoặc lỗi quyền truy
+cập chung, fallback cũng có thể thất bại.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{normalizeWeeklyWorkouts(raw)} ---
+\texttt{dashboardService.ts}}{normalizeWeeklyWorkouts(raw) --- dashboardService.ts}}\label{normalizeweeklyworkoutsraw-dashboardservice.ts}
+
+\textbf{Mục đích:} Đảm bảo biểu đồ \textbf{luôn nhận đúng 7 ngày}, kể cả
+khi server trả thiếu hoặc date kèm timestamp.
+
+\textbf{Code:}
+
+\begin{lstlisting}
+export function normalizeWeeklyWorkouts(raw: unknown): WeeklyWorkoutDay[] {
+  const base = buildEmptyWeekly();  // tao san 7 ngay, moi ngay workouts=0, calories=0
+  if (!Array.isArray(raw) || raw.length === 0) return base;
+
+  const map = new Map(base.map((day) => [day.date, { ...day }]));
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const date = normalizeDateString(String(row.date ?? '')); // "2026-06-30 00:00:00" -> "2026-06-30"
+    if (!map.has(date)) continue;
+    map.set(date, {
+      date,
+      workouts: Number(row.workouts ?? 0),
+      calories_burned: Number(row.calories_burned ?? 0),
+    });
+  }
+  return base.map((day) => map.get(day.date) ?? day);
+}
+
+\end{lstlisting}
+
+\textbf{Ví dụ minh họa:}
+
+\begin{lstlisting}
+Input tu server (thieu ngay, date lech format):
+  [{ date: "2026-06-30 00:00:00", workouts: 1, calories_burned: 320 }]
+
+buildEmptyWeekly() tao base 7 ngay: 24/6 -> 30/6, tat ca = 0
+
+Sau khi merge vao map:
+  30/6 -> workouts: 1, calories: 320
+  cac ngay khac -> giu 0
+
+Output: mang 7 phan tu, dung thu tu ngay
+\end{lstlisting}
+
+\textbf{Hàm phụ trợ \passthrough{\lstinline!buildEmptyWeekly()!}:} Dùng
+\passthrough{\lstinline!localDateDaysAgo(6 - index)!} --- tính ngày theo
+\textbf{timezone máy}, không dùng UTC (tránh lệch ngày khi user ở VN).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{buildDashboardSummaryClient(userId)}
+--- fallback
+client}{buildDashboardSummaryClient(userId) --- fallback client}}\label{builddashboardsummaryclientuserid-fallback-client}
+
+\textbf{Mục đích:} Tự gom số liệu khi RPC không dùng được.
+
+\textbf{Cách hoạt động:}
+
+\begin{lstlisting}
+Promise.all (chay song song 3 query):
+  +-- getProfile(userId)           -> display_name, wakeup_time, co nhac nho
+  +-- user_streaks                 -> current_streak, longest_streak
+  \-- workout_sessions (7 ngay)    -> workout_date, total_calories
+
+Duyet tung session -> cong don vao weeklyMap theo ngay
+Loc session hom nay -> tinh calories_burned_today, workouts_today
+Tra object DashboardSummary giong het RPC
+\end{lstlisting}
+
+\textbf{Ưu điểm \passthrough{\lstinline!Promise.all!}:} 3 query chạy
+\textbf{đồng thời} thay vì tuần tự; tổng thời gian thường gần với query
+chậm nhất, nhưng không có bảo đảm cố định là nhanh hơn 3 lần.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{loadDashboard()} ---
+\texttt{DashboardScreen.tsx}}{loadDashboard() --- DashboardScreen.tsx}}\label{loaddashboard-dashboardscreen.tsx}
+
+\textbf{Mục đích:} Hàm trung tâm tải và hiển thị toàn bộ Dashboard.
+
+\textbf{Code:}
+
+\begin{lstlisting}
+const loadDashboard = useCallback(async () => {
+  const [dashboard, badgeList, prefs] = await Promise.all([
+    getDashboardSummary(userId),
+    syncUserBadges(userId),
+    getNotificationPreferences(userId).catch(() => null),
+  ]);
+
+  setSummary(dashboard);
+  setBadges((previous) => {
+    if (prefs?.badge_notifications_enabled) {
+      const previousEarned = new Set(previous.filter(b => b.earned).map(b => b.id));
+      for (const badge of badgeList) {
+        if (badge.earned && !previousEarned.has(badge.id)) {
+          void notifyBadgeEarned('Huy hieu moi', `Ban vua mo khoa "${badge.title}"`);
+        }
+      }
+    }
+    return badgeList;
+  });
+}, [userId]);
+
+\end{lstlisting}
+
+\textbf{Giải thích từng phần:}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!Promise.all!}} --- Tải dashboard,
+  badge, prefs \textbf{cùng lúc} (3 request song song).
+\item
+  \textbf{\passthrough{\lstinline!setSummary(dashboard)!}} - Cập nhật
+  greeting, lưới chỉ số nhanh và biểu đồ.
+  \passthrough{\lstinline!StatsGrid!} tự tải dữ liệu sức khỏe riêng;
+  \passthrough{\lstinline!WorkoutCard!} hiện là nội dung tĩnh.
+\item
+  \textbf{\passthrough{\lstinline!setBadges!} với callback} --- So sánh
+  badge \textbf{cũ} vs \textbf{mới}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Tạo \passthrough{\lstinline!Set!} các id badge đã đạt trước đó
+    (\passthrough{\lstinline!previousEarned!}).
+  \item
+    Duyệt \passthrough{\lstinline!badgeList!} mới: nếu badge đạt
+    (\passthrough{\lstinline!earned!}) mà \textbf{chưa có trong Set}
+    -\textgreater{} gọi \passthrough{\lstinline!notifyBadgeEarned!}.
+  \item
+    Chỉ bắn thông báo khi
+    \passthrough{\lstinline!badge\_notifications\_enabled === true!}.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!useCallback(..., [userId])!}} --- Hàm
+  chỉ tạo lại khi \passthrough{\lstinline!userId!} đổi, tránh re-render
+  vô ích.
+\item
+  \textbf{\passthrough{\lstinline!refreshKey!}} (prop từ
+  \passthrough{\lstinline!App.tsx!}) --- Tăng sau khi hoàn thành buổi
+  tập -\textgreater{} \passthrough{\lstinline!useEffect!} gọi lại
+  \passthrough{\lstinline!loadDashboard!}.
+\end{enumerate}
+
+\textbf{Sai lệch cần lưu ý:} ở lần load đầu,
+\passthrough{\lstinline!previous!} là \passthrough{\lstinline![]!}, nên
+mọi badge đã đạt đều vắng trong
+\passthrough{\lstinline!previousEarned!}. Vì thế code có thể thông báo
+lại badge cũ; phép so sánh hiện tại chưa chứng minh badge vừa được
+insert trong lần sync này.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{WeeklyProgressChart} --- biểu đồ
+7
+ngày}{WeeklyProgressChart --- biểu đồ 7 ngày}}\label{weeklyprogresschart-biux1ec3u-ux111ux1ed3-7-nguxe0y}
+
+\textbf{Input:} \passthrough{\lstinline!days: WeeklyWorkoutDay[]!} từ
+\passthrough{\lstinline!summary.weekly\_workouts!}.
+
+\textbf{Logic chính:}
+
+\begin{lstlisting}
+const chartDays = useMemo(
+  () => (days.length === 7 ? days : buildFallbackDays()),
+  [days],
+);
+const totalWorkouts = chartDays.reduce((sum, day) => sum + day.workouts, 0);
+const hasActivity = totalWorkouts > 0;
+const maxWorkouts = Math.max(...chartDays.map(d => d.workouts), 1);
+
+\end{lstlisting}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Biến
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Ý nghĩa
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\passthrough{\lstinline!chartDays!} & Luôn 7 ngày (fallback nếu input
+sai) \\
+\passthrough{\lstinline!hasActivity!} & \passthrough{\lstinline!false!}
+-\textgreater{} hiển thị empty state ``Chưa có buổi tập'' \\
+\passthrough{\lstinline!maxWorkouts!} & Ngày tập nhiều nhất = 100\%
+chiều cao cột; tối thiểu 1 để tránh chia cho 0 \\
+\end{longtable}
+}
+
+\textbf{Tính chiều cao cột:}
+
+\begin{lstlisting}
+const fillHeight = active
+  ? Math.max(12, (day.workouts / maxWorkouts) * CHART_HEIGHT)
+  : 0;
+
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  Ngày có tập (\passthrough{\lstinline!active!}): cột cao tỉ lệ
+  \passthrough{\lstinline!workouts / maxWorkouts!}, tối thiểu 12px.
+\item
+  Ngày không tập: hiển thị chấm nhỏ (\passthrough{\lstinline!barEmpty!})
+  thay vì cột mờ 8px (bug cũ đã fix).
+\item
+  \passthrough{\lstinline!isToday!}: viền xanh lá
+  (\passthrough{\lstinline!barTrackToday!}) + nhãn ngày đậm.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{isBadgeEarned(badge,\ stats)} ---
+\texttt{badgeCalculations.ts}}{isBadgeEarned(badge, stats) --- badgeCalculations.ts}}\label{isbadgeearnedbadge-stats-badgecalculations.ts}
+
+\textbf{Mục đích:} Hàm \textbf{thuần} (không gọi mạng) --- kiểm tra 1
+huy hiệu đã đủ điều kiện chưa. Dễ unit test.
+
+\textbf{Code:}
+
+\begin{lstlisting}
+export function isBadgeEarned(badge: Badge, stats: BadgeStats): boolean {
+  switch (badge.criteria_type) {
+    case 'onboarding':          return stats.onboardingComplete;
+    case 'workout_sessions':    return stats.workoutSessions >= badge.criteria_value;
+    case 'streak':              return stats.currentStreak >= badge.criteria_value;
+    case 'water_goal_days':     return stats.waterGoalDays >= badge.criteria_value;
+    case 'nutrition_goal_days': return stats.nutritionGoalDays >= badge.criteria_value;
+    case 'calories_burned_day': return stats.maxCaloriesBurnedDay >= badge.criteria_value;
+    default:                    return false;
+  }
+}
+
+\end{lstlisting}
+
+\textbf{Ví dụ:} Badge ``Kiên trì 3 ngày'' có
+\passthrough{\lstinline!criteria\_type: 'streak'!},
+\passthrough{\lstinline!criteria\_value: 3!}. -
+\passthrough{\lstinline!stats.currentStreak = 2!} -\textgreater{}
+\passthrough{\lstinline!false!} (chưa đạt). -
+\passthrough{\lstinline!stats.currentStreak = 3!} -\textgreater{}
+\passthrough{\lstinline!true!} (đạt).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{loadBadgeStats(userId)} ---
+\texttt{badgeService.ts}}{loadBadgeStats(userId) --- badgeService.ts}}\label{loadbadgestatsuserid-badgeservice.ts}
+
+\textbf{Mục đích:} Gom \textbf{một lần} tất cả thống kê cần để kiểm tra
+huy hiệu.
+
+\textbf{Các chỉ số thu thập:}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4211}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5789}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Chỉ số
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Cách tính
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\passthrough{\lstinline!onboardingComplete!} &
+\passthrough{\lstinline!profiles.onboarding\_completed === true!} \\
+\passthrough{\lstinline!workoutSessions!} &
+\passthrough{\lstinline!COUNT(*)!} từ
+\passthrough{\lstinline!workout\_sessions!} \\
+\passthrough{\lstinline!currentStreak!} &
+\passthrough{\lstinline!user\_streaks.current\_streak!} \\
+\passthrough{\lstinline!waterGoalDays!} & Đếm ngày
+\passthrough{\lstinline!water\_ml >= water\_goal\_ml!} (+ hôm nay nếu
+đạt) \\
+\passthrough{\lstinline!nutritionGoalDays!} & Đếm ngày
+\passthrough{\lstinline!calories\_consumed >= daily\_calorie\_goal!} \\
+\passthrough{\lstinline!maxCaloriesBurnedDay!} & Gom calo theo
+\passthrough{\lstinline!workout\_date!}, lấy max \\
+\end{longtable}
+}
+
+\textbf{Lưu ý:} Hôm nay được tính riêng qua
+\passthrough{\lstinline!getDailyNutrition!} /
+\passthrough{\lstinline!getTodayWater!} vì có thể chưa có dòng trong
+bảng daily (chưa ghi trong ngày).
+
+\passthrough{\lstinline!nutritionGoalDays!} so sánh mọi ngày lịch sử với
+\textbf{mục tiêu calo hiện tại} của profile, không lưu snapshot mục tiêu
+theo từng ngày. Nếu user đổi mục tiêu, số ngày đạt chuẩn trong quá khứ
+có thể thay đổi.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{syncUserBadges(userId)} --- cấp
+huy hiệu tự
+động}{syncUserBadges(userId) --- cấp huy hiệu tự động}}\label{syncuserbadgesuserid-cux1ea5p-huy-hiux1ec7u-tux1ef1-ux111ux1ed9ng}
+
+\textbf{Code:}
+
+\begin{lstlisting}
+// Rut gon tu badgeService.ts; code that co kiem tra badgesError.
+export async function syncUserBadges(userId: string): Promise<BadgeWithStatus[]> {
+  const [{ data: badges, error: badgesError }, stats, { data: earned }] = await Promise.all([
+    supabase.from('badges').select('*').order('sort_order', { ascending: true }),
+    loadBadgeStats(userId),
+    supabase.from('user_badges').select('badge_id').eq('user_id', userId),
+  ]);
+
+  if (badgesError || !badges?.length) return getBadgesWithStatus(userId);
+
+  const earnedIds = new Set((earned ?? []).map(r => r.badge_id));
+  const toAward = badges.filter(b => !earnedIds.has(b.id) && isBadgeEarned(b, stats));
+
+  if (toAward.length > 0) {
+    const { error } = await supabase.from('user_badges').insert(
+      toAward.map(b => ({ user_id: userId, badge_id: b.id })),
+    );
+    if (error && error.code !== '23505') console.warn(error.message);
+  }
+  return getBadgesWithStatus(userId);
+}
+
+\end{lstlisting}
+
+\textbf{Luồng:}
+
+\begin{lstlisting}
+1. Tai song song: danh muc badge + stats user + badge da dat
+2. earnedIds = Set cac badge_id da co trong user_badges
+3. toAward = badge chua co VA isBadgeEarned() = true
+4. INSERT toAward vao user_badges
+5. Tra getBadgesWithStatus() — danh sach day du kem earned/earned_at
+\end{lstlisting}
+
+\textbf{Tại sao bỏ qua lỗi \passthrough{\lstinline!23505!}?} Hai lần gọi
+\passthrough{\lstinline!syncUserBadges!} đồng thời có thể cùng cố insert
+một badge. Tuy nhiên đây là insert theo batch; nếu batch gặp conflict,
+cần kiểm thử để chắc các badge khác trong batch không bị bỏ lỡ. Cách rõ
+ràng hơn là dùng upsert/\passthrough{\lstinline!ON CONFLICT DO NOTHING!}
+phù hợp với policy.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{getNotifications()} --- lazy-load
+an toàn Expo
+Go}{getNotifications() --- lazy-load an toàn Expo Go}}\label{getnotifications-lazy-load-an-touxe0n-expo-go}
+
+\textbf{Mục đích:} Chỉ load \passthrough{\lstinline!expo-notifications!}
+khi \textbf{không} chạy trên Expo Go.
+
+\begin{lstlisting}
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+async function getNotifications(): Promise<NotificationsModule | null> {
+  if (isExpoGo) return null;  // Expo Go -> khong dung notification
+
+  if (notificationsModule === undefined) {
+    try {
+      notificationsModule = await import('expo-notifications');  // import dong, lan dau
+      notificationsModule.setNotificationHandler({ /* hien alert + am thanh */ });
+    } catch {
+      notificationsModule = null;
+    }
+  }
+  return notificationsModule;
+}
+
+\end{lstlisting}
+
+\textbf{Pattern lazy-load:} - \passthrough{\lstinline!undefined!} = chưa
+thử load. - \passthrough{\lstinline!null!} = đã thử import nhưng lỗi. -
+\passthrough{\lstinline!NotificationsModule!} = đã load thành công và
+được cache. - Trên Expo Go, hàm trả \passthrough{\lstinline!null!} sớm;
+biến cache vẫn giữ nguyên.
+
+-\textgreater{} Mọi hàm notification gọi
+\passthrough{\lstinline!getNotifications()!} trước; nếu
+\passthrough{\lstinline!null!} -\textgreater{} return sớm, \textbf{không
+crash}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{updateNotificationPreferences(userId,\ prefs)}
+--- bật/tắt
+nhắc}{updateNotificationPreferences(userId, prefs) --- bật/tắt nhắc}}\label{updatenotificationpreferencesuserid-prefs-bux1eadttux1eaft-nhux1eafc}
+
+\textbf{Mục đích:} Cập nhật cài đặt nhắc nhở --- vừa lập lịch trên máy,
+vừa ghi cờ lên server.
+
+\textbf{Luồng xử lý:}
+
+\begin{lstlisting}
+1. Doc prefs hien tai: getNotificationPreferences(userId)
+2. Merge: next = { ...current, ...prefs }
+
+3. Neu bat nhac nuoc (true):
+     -> enableWaterReminders() — xin quyen + lap 8 thong bao lap ngay
+   Neu tat (false):
+     -> disableWaterReminders() — huy tat ca id da luu trong AsyncStorage
+
+4. Neu bat nhac tap (true):
+     -> requestPermissions() — xin quyen OS
+     -> (Android) tao notification channel
+     -> scheduleWorkoutReminder(wakeup_time) — lap lich CALENDAR lap ngay
+   Neu tat -> cancelWorkoutReminder()
+   Neu doi gio khi dang bat -> scheduleWorkoutReminder(gio moi)
+
+5. Ghi 3 co boolean va `wakeup_time` len `profiles` (Supabase)
+6. Tra next prefs
+\end{lstlisting}
+
+Luồng này không phải transaction giữa OS và database: lịch local được
+đổi trước, rồi mới update \passthrough{\lstinline!profiles!}. Nếu update
+Supabase thất bại, lịch trên máy và cờ server có thể lệch nhau.
+
+\textbf{\passthrough{\lstinline!scheduleWorkoutReminder(wakeupTime)!}
+chi tiết:}
+
+\begin{lstlisting}
+await cancelWorkoutReminder();           // huy lich cu (tranh trung)
+const { hour, minute } = parseWakeupTime(wakeupTime);  // "06:30" -> {6, 30}
+const id = await Notifications.scheduleNotificationAsync({
+  content: { title: 'Giờ tập luyện ', body: '...', sound: true },
+  trigger: { type: CALENDAR, hour, minute, repeats: true },  // lap moi ngay
+});
+await AsyncStorage.setItem(WORKOUT_REMINDER_ID_KEY, id);  // luu id de huy sau
+
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{\texttt{syncAllRemindersOnLaunch(userId)}
+--- khôi phục khi mở
+app}{syncAllRemindersOnLaunch(userId) --- khôi phục khi mở app}}\label{syncallremindersonlaunchuserid-khuxf4i-phux1ee5c-khi-mux1edf-app}
+
+\textbf{Gọi từ:} \passthrough{\lstinline!App.tsx!} sau khi xác nhận user
+đã onboarding.
+
+\begin{lstlisting}
+export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
+  if (isExpoGo) return;
+
+  await syncWaterRemindersOnLaunch(userId);   // doc co water -> dat lai 8 moc neu bat
+
+  const prefs = await getNotificationPreferences(userId);
+  if (prefs.workout_reminder_enabled) {
+    const granted = await requestPermissions();
+    if (granted) await scheduleWorkoutReminder(prefs.wakeup_time);
+  }
+}
+
+\end{lstlisting}
+
+\textbf{Tại sao cần?} Khi id trong AsyncStorage không còn, app có thể
+dựa vào cờ server để thử đặt lại lịch. Kết quả vẫn phụ thuộc quyền OS và
+kết nối mạng; lỗi trong \passthrough{\lstinline!App.tsx!} hiện chỉ được
+ghi bằng \passthrough{\lstinline!console.error!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{RPC \texttt{get\_dashboard\_summary()}
+--- SQL trên
+server}{RPC get\_dashboard\_summary() --- SQL trên server}}\label{rpc-get_dashboard_summary-sql-truxean-server}
+
+\textbf{Phần quan trọng nhất --- snapshot 7 ngày:}
+
+\begin{lstlisting}[language=SQL]
+from generate_series(v_today - 6, v_today, interval '1 day') as day
+left join lateral (
+  select count(*)::int as count, coalesce(sum(total_calories),0) as calories
+  from public.workout_sessions
+  where user_id = v_user_id and workout_date = day::date
+) ws on true
+
+\end{lstlisting}
+
+\textbf{Giải thích:} - \passthrough{\lstinline!generate\_series!} tạo
+\textbf{7 ngày liên tiếp} (hôm nay - 6 -\textgreater{} hôm nay). -
+\passthrough{\lstinline!LEFT JOIN LATERAL!} với subquery đếm session
+theo từng ngày. - Ngày \textbf{không có buổi tập} vẫn xuất hiện với
+\passthrough{\lstinline!workouts = 0!},
+\passthrough{\lstinline!calories\_burned = 0!}. - Việc giữ đủ ngày đến
+từ \passthrough{\lstinline!generate\_series!} kết hợp subquery aggregate
+luôn trả một dòng; không nên khẳng định mọi
+\passthrough{\lstinline!INNER JOIN!} đều làm mất ngày nếu chưa xét hình
+dạng subquery. - \passthrough{\lstinline!v\_today := current\_date!}
+theo timezone database. Cần cấu hình/chuẩn hóa timezone để khớp với ngày
+local trên thiết bị.
+
+\textbf{Bảo mật:} -
+\passthrough{\lstinline!v\_user\_id := (select auth.uid())!} --- chỉ lấy
+data của user đang đăng nhập. -
+\passthrough{\lstinline!SECURITY INVOKER!} --- chạy với quyền user, RLS
+vẫn áp dụng. -
+\passthrough{\lstinline!if v\_user\_id is null then raise exception!}
+--- từ chối nếu chưa đăng nhập.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{Tóm tắt hàm}\label{tuxf3m-tux1eaft-huxe0m}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!getDashboardSummary!}
+  (\passthrough{\lstinline!dashboardService!}): nhận
+  \passthrough{\lstinline!userId!}, trả
+  \passthrough{\lstinline!DashboardSummary!}; gọi khi mở hoặc refresh
+  Dashboard.
+\item
+  \passthrough{\lstinline!normalizeWeeklyWorkouts!}
+  (\passthrough{\lstinline!dashboardService!}): nhận
+  \passthrough{\lstinline!raw: unknown!}, trả mảng 7 ngày; chạy sau RPC.
+\item
+  \passthrough{\lstinline!loadDashboard!}
+  (\passthrough{\lstinline!DashboardScreen!}): tải song song summary,
+  badge và prefs rồi cập nhật state.
+\item
+  \passthrough{\lstinline!isBadgeEarned!}
+  (\passthrough{\lstinline!badgeCalculations!}): nhận badge và stats,
+  trả boolean cho từng điều kiện.
+\item
+  \passthrough{\lstinline!syncUserBadges!}
+  (\passthrough{\lstinline!badgeService!}): kiểm tra/cấp badge khi
+  Dashboard load.
+\item
+  \passthrough{\lstinline!getNotificationPreferences!} và
+  \passthrough{\lstinline!updateNotificationPreferences!}
+  (\passthrough{\lstinline!notificationService!}): đọc/ghi cài đặt
+  modal.
+\item
+  \passthrough{\lstinline!syncAllRemindersOnLaunch!}
+  (\passthrough{\lstinline!notificationService!}): thử khôi phục lịch
+  sau login và onboarding.
+\item
+  \passthrough{\lstinline!notifyBadgeEarned!}
+  (\passthrough{\lstinline!notificationService!}): phát local
+  notification tức thời; hiện chưa tự xin quyền.
+\item
+  \passthrough{\lstinline!get\_dashboard\_summary!} (SQL RPC): lấy user
+  từ JWT và trả \passthrough{\lstinline!jsonb!}.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\emph{Tài liệu giải thích module Dashboard, Notification \& Badges ---
+FitLife. Phiên bản dễ hiểu + giải thích code cho nghiệm thu và báo cáo
+nhóm.}
+
+\end{document}

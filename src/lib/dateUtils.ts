@@ -1,3 +1,8 @@
+/**
+ * Tiện ích xử lý ngày theo timezone local của thiết bị.
+ * Dùng cho biểu đồ 7 ngày, chuẩn hóa date từ Supabase, snapshot dinh dưỡng/nước.
+ * Không dùng toISOString() cho bản ghi theo ngày vì chuyển sang UTC gây lệch ngày.
+ */
 const pad2 = (value: number): string => String(value).padStart(2, '0');
 
 /**
@@ -14,6 +19,7 @@ export function addLocalDays(date: Date, amount: number): Date {
   return result;
 }
 
+/** Ngày local cách hôm nay `amount` ngày — dùng buildEmptyWeekly / biểu đồ 7 ngày. */
 export function localDateDaysAgo(amount: number, from: Date = new Date()): string {
   return toLocalDateString(addLocalDays(from, -amount));
 }

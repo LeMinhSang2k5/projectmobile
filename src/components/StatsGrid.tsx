@@ -1,3 +1,8 @@
+/**
+ * Thẻ sức khỏe hôm nay trên Dashboard: giờ nhắc, calo nạp, nước, macro dinh dưỡng.
+ * Tự tải dữ liệu riêng (không nằm trong RPC get_dashboard_summary).
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 3.1, 3.5
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';

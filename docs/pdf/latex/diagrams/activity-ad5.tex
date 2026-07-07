@@ -1,0 +1,20 @@
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[uml/start] (start) {};
+  \node[uml/activity, below=of start] (sync) {syncUserBadges(userId)};
+  \node[uml/activity, below=of sync] (parallel) {Promise.all:\\badges + stats + earned};
+  \node[uml/activity, below=of parallel] (filter) {Lọc badge chưa có\\và isBadgeEarned = true};
+  \node[uml/decision, below=of filter] (has) {Có badge\\cần cấp?};
+  \node[uml/activity, right=1.7cm of has] (insert) {INSERT user\_badges\\(bỏ qua 23505)};
+  \node[uml/activity, below=of has] (return) {Trả getBadgesWithStatus};
+  \node[uml/final, below=of return] (end) {};
+  \node[uml/finalinner] at (end) {};
+
+  \draw[uml/flow] (start) -- (sync);
+  \draw[uml/flow] (sync) -- (parallel);
+  \draw[uml/flow] (parallel) -- (filter);
+  \draw[uml/flow] (filter) -- (has);
+  \draw[uml/flow] (has) -- node[uml/flowlabel, above] {Có} (insert.west);
+  \draw[uml/flow] (insert.south) |- (return.east);
+  \draw[uml/flow] (has) -- node[uml/flowlabel, left] {Không} (return);
+  \draw[uml/flow] (return) -- (end);
+\end{tikzpicture}

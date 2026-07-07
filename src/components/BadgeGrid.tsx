@@ -1,3 +1,7 @@
+/**
+ * Lưới huy hiệu trên Dashboard — badge đã đạt sáng, chưa đạt mờ (opacity 0.65).
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 4.1, 4.5
+ */
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';

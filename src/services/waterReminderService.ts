@@ -1,3 +1,8 @@
+/**
+ * Service nhắc uống nước — 8 mốc/ngày: 7h, 9h, 11h, 13h, 15h, 17h, 19h, 21h.
+ * Id lịch lưu AsyncStorage (water_reminder_ids); cờ bật/tắt lưu profiles.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5.1, 5.3
+ */
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -153,6 +158,7 @@ async function scheduleWaterNotifications(): Promise<void> {
   await AsyncStorage.setItem(WATER_REMINDER_IDS_KEY, JSON.stringify(ids));
 }
 
+/** Bật nhắc nước: xin quyền OS → lập 8 thông báo lặp ngày → ghi water_reminder_enabled = true. */
 export async function enableWaterReminders(userId: string): Promise<void> {
   if (isExpoGo) {
     startInAppWaterReminders();
@@ -190,6 +196,7 @@ export async function enableWaterReminders(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Tắt nhắc nước: hủy tất cả id đã lưu → ghi water_reminder_enabled = false. */
 export async function disableWaterReminders(userId: string): Promise<void> {
   await cancelWaterNotifications();
 
@@ -200,6 +207,7 @@ export async function disableWaterReminders(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Khôi phục 8 mốc nước khi mở app nếu profiles.water_reminder_enabled = true. */
 export async function syncWaterRemindersOnLaunch(userId: string): Promise<void> {
   const { data } = await supabase
     .from('profiles')

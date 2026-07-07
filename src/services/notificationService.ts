@@ -1,3 +1,9 @@
+/**
+ * Service Thông báo — nhắc tập, prefs, thông báo huy hiệu mới.
+ * Lazy-load expo-notifications; trên Expo Go trả null để không crash.
+ * Cờ bật/tắt lưu profiles; id lịch local lưu AsyncStorage.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5, 10.9–10.11
+ */
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -25,6 +31,10 @@ function isNotificationGranted(
   return p.granted === true || p.status === 'granted';
 }
 
+/**
+ * Lazy-load expo-notifications — an toàn trên Expo Go (trả null sớm).
+ * undefined = chưa thử load; null = đã thử nhưng lỗi; module = đã cache thành công.
+ */
 async function getNotifications(): Promise<NotificationsModule | null> {
   if (isExpoGo) return null;
 
@@ -72,6 +82,7 @@ function parseWakeupTime(value: string): { hour: number; minute: number } {
   return { hour, minute };
 }
 
+/** Hủy lịch nhắc tập cũ trước khi đặt lịch mới (tránh trùng). Id lưu AsyncStorage. */
 async function cancelWorkoutReminder(): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;
@@ -83,6 +94,7 @@ async function cancelWorkoutReminder(): Promise<void> {
   }
 }
 
+/** Lập lịch nhắc tập hàng ngày đúng giờ wakeup_time (trigger CALENDAR, repeats: true). */
 async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;
@@ -112,6 +124,7 @@ export function isNotificationSupported(): boolean {
   return !isExpoGo;
 }
 
+/** Đọc 3 cờ nhắc nhở + wakeup_time từ bảng profiles. */
 export async function getNotificationPreferences(
   userId: string,
 ): Promise<NotificationPreferences> {
@@ -131,6 +144,10 @@ export async function getNotificationPreferences(
   };
 }
 
+/**
+ * Cập nhật cài đặt nhắc nhở: lập lịch trên máy trước, sau đó ghi cờ lên profiles.
+ * Không phải transaction — nếu update Supabase thất bại, lịch local và cờ server có thể lệch.
+ */
 export async function updateNotificationPreferences(
   userId: string,
   prefs: Partial<NotificationPreferences>,
@@ -190,6 +207,10 @@ export async function updateNotificationPreferences(
   return next;
 }
 
+/**
+ * Khôi phục lịch nhắc khi mở app (gọi từ App.tsx sau login + onboarding).
+ * Đọc cờ server, đặt lại 8 mốc nước và nhắc tập nếu user đã bật trước đó.
+ */
 export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
   await syncWaterRemindersOnLaunch(userId);
 
@@ -204,6 +225,7 @@ export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
   }
 }
 
+/** Local notification tức thời khi mở khóa huy hiệu mới (chưa tự xin quyền OS). */
 export async function notifyBadgeEarned(title: string, body: string): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;

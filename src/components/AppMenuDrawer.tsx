@@ -1,3 +1,8 @@
+/**
+ * Menu drawer (3 gạch) — điều hướng tab và mở NotificationSettingsModal.
+ * Mục "Thông báo": nhắc uống nước, nhắc tập, thông báo huy hiệu.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5.2
+ */
 import React, { useEffect, useRef } from 'react';
 import {
   View,

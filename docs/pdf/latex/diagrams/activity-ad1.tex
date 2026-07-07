@@ -1,0 +1,28 @@
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[uml/start] (start) {};
+  \node[uml/decision, below=of start] (check) {Đã đăng nhập\\và onboarding?};
+  \node[uml/activity, below left=1.1cm and 1.4cm of check] (other) {Màn hình khác\\/Onboarding};
+  \node[uml/final, below=of other] (endother) {};
+  \node[uml/finalinner] at (endother) {};
+
+  \node[uml/activity, below right=1.1cm and 1.4cm of check] (sync) {syncAllRemindersOnLaunch\\(bỏ qua trên Expo Go)};
+  \node[uml/activity, below=of sync] (load) {loadDashboard\\Promise.all};
+  \node[uml/activity, below=of load] (norm) {normalizeWeeklyWorkouts};
+  \node[uml/activity, below=of norm] (render) {Render Dashboard UI};
+  \node[uml/decision, below=of render] (badgeq) {Badge mới\\+ bật notify?};
+  \node[uml/activity, right=1.8cm of badgeq] (notify) {notifyBadgeEarned};
+  \node[uml/final, below=of badgeq] (end) {};
+  \node[uml/finalinner] at (end) {};
+
+  \draw[uml/flow] (start) -- (check);
+  \draw[uml/flow] (check.west) -| node[uml/flowlabel, above left] {Không} (other.north);
+  \draw[uml/flow] (other) -- (endother);
+  \draw[uml/flow] (check.east) -| node[uml/flowlabel, above right] {Có} (sync.north);
+  \draw[uml/flow] (sync) -- (load);
+  \draw[uml/flow] (load) -- (norm);
+  \draw[uml/flow] (norm) -- (render);
+  \draw[uml/flow] (render) -- (badgeq);
+  \draw[uml/flow] (badgeq) -- node[uml/flowlabel, left] {Có} (notify.west);
+  \draw[uml/flow] (notify.south) |- (end.east);
+  \draw[uml/flow] (badgeq) -- node[uml/flowlabel, left] {Không} (end);
+\end{tikzpicture}

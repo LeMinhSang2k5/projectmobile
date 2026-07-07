@@ -1,0 +1,48 @@
+\xpg@aux {}{vietnamese}
+\contentsline {subsection}{\numberline {0.1}Module này làm gì?}{2}{subsection.0.1}%
+\contentsline {subsection}{\numberline {0.2}Kiến trúc tổng quan (dễ hiểu)}{2}{subsection.0.2}%
+\contentsline {subsection}{\numberline {0.3}Dashboard (Trang chủ tổng quan)}{3}{subsection.0.3}%
+\contentsline {subsubsection}{\numberline {0.3.1}User thấy gì trên Dashboard?}{3}{subsubsection.0.3.1}%
+\contentsline {subsubsection}{\numberline {0.3.2}Dữ liệu lấy từ đâu?}{3}{subsubsection.0.3.2}%
+\contentsline {subsubsection}{\numberline {0.3.3}Biểu đồ 7 ngày hoạt động thế nào?}{4}{subsubsection.0.3.3}%
+\contentsline {subsubsection}{\numberline {0.3.4}Nếu RPC lỗi thì sao?}{5}{subsubsection.0.3.4}%
+\contentsline {subsubsection}{\numberline {0.3.5}File code liên quan}{5}{subsubsection.0.3.5}%
+\contentsline {subsection}{\numberline {0.4}Badges (Huy hiệu thành tích)}{5}{subsection.0.4}%
+\contentsline {subsubsection}{\numberline {0.4.1}Huy hiệu là gì?}{5}{subsubsection.0.4.1}%
+\contentsline {subsubsection}{\numberline {0.4.2}Danh sách 8 huy hiệu mặc định}{5}{subsubsection.0.4.2}%
+\contentsline {subsubsection}{\numberline {0.4.3}Cơ chế cấp huy hiệu (từng bước)}{6}{subsubsection.0.4.3}%
+\contentsline {subsubsection}{\numberline {0.4.4}Cấu trúc database}{7}{subsubsection.0.4.4}%
+\contentsline {subsubsection}{\numberline {0.4.5}File code liên quan}{7}{subsubsection.0.4.5}%
+\contentsline {subsection}{\numberline {0.5}Notification (Thông báo \& nhắc nhở)}{7}{subsection.0.5}%
+\contentsline {subsubsection}{\numberline {0.5.1}Ba loại thông báo}{7}{subsubsection.0.5.1}%
+\contentsline {subsubsection}{\numberline {0.5.2}User bật/tắt ở đâu?}{8}{subsubsection.0.5.2}%
+\contentsline {subsubsection}{\numberline {0.5.3}Luồng bật nhắc tập (ví dụ)}{8}{subsubsection.0.5.3}%
+\contentsline {subsubsection}{\numberline {0.5.4}Lưu ý quan trọng về Expo Go}{9}{subsubsection.0.5.4}%
+\contentsline {subsubsection}{\numberline {0.5.5}Khôi phục nhắc khi mở lại app}{9}{subsubsection.0.5.5}%
+\contentsline {subsubsection}{\numberline {0.5.6}File code liên quan}{9}{subsubsection.0.5.6}%
+\contentsline {subsection}{\numberline {0.6}Luồng hoạt động tổng hợp}{9}{subsection.0.6}%
+\contentsline {subsubsection}{\numberline {0.6.1}Kịch bản A: User mở app buổi sáng}{9}{subsubsection.0.6.1}%
+\contentsline {subsubsection}{\numberline {0.6.2}Kịch bản B: User hoàn thành buổi tập}{10}{subsubsection.0.6.2}%
+\contentsline {subsubsection}{\numberline {0.6.3}Kịch bản C: User bật nhắc uống nước}{10}{subsubsection.0.6.3}%
+\contentsline {subsection}{\numberline {0.7}Backend (Database)}{10}{subsection.0.7}%
+\contentsline {subsubsection}{\numberline {0.7.1}Migration cần chạy}{10}{subsubsection.0.7.1}%
+\contentsline {subsubsection}{\numberline {0.7.2}Bảng và cột module tạo thêm}{11}{subsubsection.0.7.2}%
+\contentsline {subsubsection}{\numberline {0.7.3}Bảo mật}{11}{subsubsection.0.7.3}%
+\contentsline {subsection}{\numberline {0.8}Kiểm thử}{11}{subsection.0.8}%
+\contentsline {subsubsection}{\numberline {0.8.1}Lệnh chạy test tự động}{11}{subsubsection.0.8.1}%
+\contentsline {subsubsection}{\numberline {0.8.2}Checklist test thủ công}{11}{subsubsection.0.8.2}%
+\contentsline {subsection}{\numberline {0.9}Tóm tắt nhanh}{12}{subsection.0.9}%
+\contentsline {subsection}{\numberline {0.10}Giải thích code \& hàm chi tiết}{12}{subsection.0.10}%
+\contentsline {subsubsection}{\numberline {0.10.1}\texttt {getDashboardSummary(userId)} --- \texttt {dashboardService.ts}}{12}{subsubsection.0.10.1}%
+\contentsline {subsubsection}{\numberline {0.10.2}\texttt {normalizeWeeklyWorkouts(raw)} --- \texttt {dashboardService.ts}}{13}{subsubsection.0.10.2}%
+\contentsline {subsubsection}{\numberline {0.10.3}\texttt {buildDashboardSummaryClient(userId)} --- fallback client}{14}{subsubsection.0.10.3}%
+\contentsline {subsubsection}{\numberline {0.10.4}\texttt {loadDashboard()} --- \texttt {DashboardScreen.tsx}}{15}{subsubsection.0.10.4}%
+\contentsline {subsubsection}{\numberline {0.10.5}\texttt {WeeklyProgressChart} --- biểu đồ 7 ngày}{16}{subsubsection.0.10.5}%
+\contentsline {subsubsection}{\numberline {0.10.6}\texttt {isBadgeEarned(badge,\ stats)} --- \texttt {badgeCalculations.ts}}{17}{subsubsection.0.10.6}%
+\contentsline {subsubsection}{\numberline {0.10.7}\texttt {loadBadgeStats(userId)} --- \texttt {badgeService.ts}}{17}{subsubsection.0.10.7}%
+\contentsline {subsubsection}{\numberline {0.10.8}\texttt {syncUserBadges(userId)} --- cấp huy hiệu tự động}{18}{subsubsection.0.10.8}%
+\contentsline {subsubsection}{\numberline {0.10.9}\texttt {getNotifications()} --- lazy-load an toàn Expo Go}{19}{subsubsection.0.10.9}%
+\contentsline {subsubsection}{\numberline {0.10.10}\texttt {updateNotificationPreferences(userId,\ prefs)} --- bật/tắt nhắc}{20}{subsubsection.0.10.10}%
+\contentsline {subsubsection}{\numberline {0.10.11}\texttt {syncAllRemindersOnLaunch(userId)} --- khôi phục khi mở app}{21}{subsubsection.0.10.11}%
+\contentsline {subsubsection}{\numberline {0.10.12}RPC \texttt {get\_dashboard\_summary()} --- SQL trên server}{21}{subsubsection.0.10.12}%
+\contentsline {subsubsection}{\numberline {0.10.13}Tóm tắt hàm}{22}{subsubsection.0.10.13}%

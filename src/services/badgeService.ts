@@ -1,3 +1,8 @@
+/**
+ * Service Huy hiệu — đồng bộ và cấp badge tự động mỗi lần mở Dashboard.
+ * Luồng: loadBadgeStats → isBadgeEarned → INSERT user_badges → getBadgesWithStatus.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 4, 10.7–10.8
+ */
 import { supabase } from '../../utils/supabase';
 import { getProfile, getCalorieGoal, getWaterGoalMl } from './healthService';
 import { getDailyNutrition } from './nutritionService';
@@ -16,6 +21,10 @@ type BadgeStats = {
   maxCaloriesBurnedDay: number;
 };
 
+/**
+ * Gom một lần tất cả thống kê cần để kiểm tra 8 huy hiệu mặc định.
+ * Hôm nay tính riêng qua getDailyNutrition/getTodayWater vì có thể chưa có dòng trong bảng daily.
+ */
 async function loadBadgeStats(userId: string): Promise<BadgeStats> {
   const today = toLocalDateString();
   const profile = await getProfile(userId);
@@ -81,6 +90,7 @@ async function loadBadgeStats(userId: string): Promise<BadgeStats> {
   };
 }
 
+/** Trả danh sách badge kèm trạng thái earned/earned_at (đọc từ bảng user_badges). */
 export async function getBadgesWithStatus(userId: string): Promise<BadgeWithStatus[]> {
   const [{ data: badges, error: badgesError }, { data: earned }] = await Promise.all([
     supabase.from('badges').select('*').order('sort_order', { ascending: true }),
@@ -112,6 +122,10 @@ export async function getBadgesWithStatus(userId: string): Promise<BadgeWithStat
   }));
 }
 
+/**
+ * Đồng bộ huy hiệu: kiểm tra điều kiện, INSERT badge mới vào user_badges.
+ * Bỏ qua lỗi 23505 (unique constraint) khi hai lần sync đồng thời cùng insert.
+ */
 export async function syncUserBadges(userId: string): Promise<BadgeWithStatus[]> {
   const [{ data: badges, error: badgesError }, stats, { data: earned }] = await Promise.all([
     supabase.from('badges').select('*').order('sort_order', { ascending: true }),

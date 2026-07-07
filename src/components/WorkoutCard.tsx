@@ -1,3 +1,8 @@
+/**
+ * Thẻ buổi tập trên Dashboard — dữ liệu trình diễn cố định (hard-code).
+ * Chưa đọc chương trình hiện tại từ database.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 3.1, 3.5
+ */
 import React from 'react';
 import { View, Text, StyleSheet, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -1,3 +1,8 @@
+/**
+ * Màn hình tab Home (Dashboard) — Tầng 1 (giao diện).
+ * Hiển thị: chỉ số nhanh, biểu đồ 7 ngày, buổi tập, sức khỏe hôm nay, huy hiệu.
+ * Không gọi database trực tiếp — luôn qua dashboardService, badgeService, notificationService.
+ */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -55,6 +60,11 @@ export default function DashboardScreen({
   const [settingsVisible, setSettingsVisible] = useState(false);
   const handleScroll = useHideOnScroll();
 
+  /**
+   * Hàm trung tâm tải Dashboard: 3 request song song (summary, badge, prefs).
+   * refreshKey (từ App.tsx) tăng sau khi hoàn thành buổi tập → useEffect gọi lại hàm này.
+   * Lưu ý: lần load đầu previous badges = [] nên có thể bắn lại thông báo badge cũ.
+   */
   const loadDashboard = useCallback(async () => {
     try {
       const [dashboard, badgeList, prefs] = await Promise.all([

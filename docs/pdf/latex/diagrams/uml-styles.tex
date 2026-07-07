@@ -1,0 +1,102 @@
+% Shared UML TikZ styles for FitLife module diagrams
+\tikzset{
+  uml/usecase/.style={
+    ellipse,
+    draw=accent,
+    fill=accent!8,
+    line width=0.7pt,
+    minimum width=2.7cm,
+    minimum height=0.95cm,
+    align=center,
+    font=\scriptsize,
+    inner sep=2pt
+  },
+  uml/actor/.style={
+    font=\small\bfseries,
+    align=center
+  },
+  uml/boundary/.style={
+    draw=black!75,
+    line width=0.9pt,
+    rounded corners=6pt,
+    inner sep=14pt
+  },
+  uml/include/.style={
+    -{Stealth[length=2mm]},
+    dashed,
+    draw=black!65,
+    font=\tiny
+  },
+  uml/extend/.style={
+    -{Stealth[length=2mm]},
+    dotted,
+    draw=black!65,
+    font=\tiny
+  },
+  uml/assoc/.style={
+    -,
+    draw=black!75,
+    line width=0.6pt
+  },
+  uml/start/.style={
+    circle,
+    fill=black,
+    minimum size=6mm,
+    inner sep=0pt
+  },
+  uml/final/.style={
+    circle,
+    draw=black,
+    line width=0.7pt,
+    minimum size=6mm,
+    inner sep=0pt
+  },
+  uml/finalinner/.style={
+    circle,
+    fill=black,
+    minimum size=3.5mm,
+    inner sep=0pt
+  },
+  uml/activity/.style={
+    rectangle,
+    rounded corners=4pt,
+    draw=black!70,
+    fill=accent!6,
+    line width=0.7pt,
+    minimum width=3.6cm,
+    minimum height=0.85cm,
+    align=center,
+    font=\scriptsize,
+    inner sep=3pt
+  },
+  uml/decision/.style={
+    diamond,
+    draw=black!70,
+    fill=yellow!12,
+    aspect=2.2,
+    align=center,
+    font=\tiny,
+    inner sep=1pt
+  },
+  uml/flow/.style={
+    -{Stealth[length=2mm]},
+    draw=black!70,
+    line width=0.6pt
+  },
+  uml/flowlabel/.style={
+    font=\tiny,
+    fill=white,
+    inner sep=1pt
+  }
+}
+
+\newcommand{\umlActor}[3]{%
+  \begin{scope}[shift={(#1,#2)}]
+    \draw[line width=0.7pt] (0,0.55) circle (0.18);
+    \draw[line width=0.7pt] (0,0.37) -- (0,-0.05);
+    \draw[line width=0.7pt] (-0.28,0.18) -- (0.28,0.18);
+    \draw[line width=0.7pt] (0,-0.05) -- (-0.22,-0.55);
+    \draw[line width=0.7pt] (0,-0.05) -- (0.22,-0.55);
+    \node[uml/actor, below=0.72cm] {#3};
+  \end{scope}%
+}

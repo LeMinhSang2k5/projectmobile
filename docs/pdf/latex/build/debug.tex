@@ -1,0 +1,1287 @@
+% Pandoc LaTeX template — hỗ trợ tiếng Việt (XeLaTeX)
+\documentclass[12pt,a4paper]{article}
+
+% Font & ngôn ngữ
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{vietnamese}
+\setotherlanguage{english}
+\setmainfont{Helvetica Neue}[
+  BoldFont = Helvetica Neue Bold,
+  ItalicFont = Helvetica Neue Italic,
+  BoldItalicFont = Helvetica Neue Bold Italic
+]
+\setsansfont{Helvetica Neue}
+\setmonofont{Helvetica Neue}[Scale=0.88]
+\defaultfontfeatures{Ligatures=TeX}
+
+% Layout
+\usepackage[margin=2.5cm, top=2.8cm, bottom=2.8cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% Màu & link
+\usepackage{xcolor}
+\definecolor{linkcolor}{RGB}{45,90,30}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{accent}{RGB}{80,130,40}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linkcolor,
+  urlcolor=linkcolor,
+  citecolor=linkcolor,
+  pdfauthor={FitLife - Module Người 4},
+  pdftitle={Đặc tả Dashboard, Notification \& Badges}
+}
+
+% Bảng
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{tabularx}
+\renewcommand{\arraystretch}{1.3}
+% Fix pandoc 3.x table caption counter
+\newcounter{none}
+\renewcommand{\thenone}{}
+
+% Code listing (không dùng framed — tương thích TeX Live tối thiểu)
+\usepackage{fancyvrb}
+\newenvironment{Shaded}{%
+  \VerbatimEnvironment
+  \begin{quote}\small\ttfamily
+}{%
+  \end{quote}%
+}
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  rulecolor=\color{gray!40},
+  columns=flexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em,
+  aboveskip=1em,
+  belowskip=1em,
+}
+
+% Mục lục — dùng mặc định của LaTeX (không cần package thêm)
+
+% Pandoc list helper
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Pandoc variables
+\title{Tài liệu Giải thích Module Dashboard, Notification \& Badges}
+\author{FitLife --- Người 4}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Tài liệu Giải thích Module Dashboard, Notification \&
+Badges}\label{tuxe0i-liux1ec7u-giux1ea3i-thuxedch-module-dashboard-notification-badges}
+
+\textbf{Dự án:} FitLife --- Ứng dụng tập luyện \& sức khỏe\\
+\textbf{Phạm vi:} Module của Người 4 (theo bản phân công nhóm)\\
+\textbf{Công nghệ:} React Native (Expo) + Supabase (PostgreSQL)
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 1 --- Module này làm
+gì?}\label{phux1ea7n-1-module-nuxe0y-luxe0m-guxec}
+
+Module \textbf{Dashboard, Notification \& Badges} là phần giúp người
+dùng \textbf{nhìn tổng quan tiến độ}, \textbf{nhận nhắc nhở} và
+\textbf{được ghi nhận thành tích} khi tập luyện đều đặn.
+
+Gồm \textbf{3 chức năng chính:}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Chức năng
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Người dùng thấy gì
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Mục đích
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Dashboard} & Tab Home: calo đốt, buổi tập, biểu đồ 7 ngày, khóa
+tập hiện tại & Tổng hợp mọi số liệu quan trọng trên một màn hình \\
+\textbf{Notification} & Thông báo nhắc uống nước, nhắc tập, thông báo
+huy hiệu mới & Giúp user không quên tập và uống nước \\
+\textbf{Badges} & Lưới huy hiệu (Khởi đầu, Kiên trì 3 ngày, Đốt cháy 500
+kcal\ldots) & Gamification --- khuyến khích duy trì thói quen \\
+\end{longtable}
+}
+
+\textbf{Người 4 phụ trách cả 3 lớp:} - \textbf{Frontend} --- giao diện
+Dashboard, huy hiệu, cài đặt nhắc nhở - \textbf{Backend} --- API tổng
+hợp Dashboard, bảng huy hiệu, lưu cài đặt thông báo - \textbf{Test} ---
+kiểm thử thông báo, quyền OS, logic huy hiệu
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 2 --- Kiến trúc tổng quan (dễ
+hiểu)}\label{phux1ea7n-2-kiux1ebfn-truxfac-tux1ed5ng-quan-dux1ec5-hiux1ec3u}
+
+Hãy tưởng tượng app như một nhà 3 tầng:
+
+\begin{verbatim}
+┌─────────────────────────────────────────┐
+│  TẦNG 1 — GIAO DIỆN (màn hình user nhìn) │
+│  DashboardScreen, BadgeGrid, Modal nhắc  │
+└──────────────────┬──────────────────────┘
+                   │ gọi hàm
+┌──────────────────▼──────────────────────┐
+│  TẦNG 2 — SERVICE (xử lý nghiệp vụ)    │
+│  dashboardService, badgeService,         │
+│  notificationService, waterReminder      │
+└──────────────────┬──────────────────────┘
+                   │ gọi API / RPC
+┌──────────────────▼──────────────────────┐
+│  TẦNG 3 — SUPABASE (lưu trữ & bảo mật)  │
+│  PostgreSQL + RLS + RPC functions        │
+└─────────────────────────────────────────┘
+\end{verbatim}
+
+\textbf{Quy tắc quan trọng:} - Màn hình \textbf{không} gọi database trực
+tiếp --- luôn qua \textbf{service}. - Logic tính toán thuần (vd: đủ điều
+kiện huy hiệu chưa?) nằm trong \textbf{\texttt{lib/}} để dễ test. - Mỗi
+user \textbf{chỉ thấy dữ liệu của mình} nhờ RLS (Row Level Security)
+trên Supabase.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 3 --- Dashboard (Trang chủ tổng
+quan)}\label{phux1ea7n-3-dashboard-trang-chux1ee7-tux1ed5ng-quan}
+
+\subsubsection{3.1. User thấy gì trên
+Dashboard?}\label{user-thux1ea5y-guxec-truxean-dashboard}
+
+Khi mở tab \textbf{Home}, màn hình hiển thị:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Lưới chỉ số} --- Calo đốt hôm nay, số buổi tập, kỷ lục huy
+  hiệu
+\item
+  \textbf{Biểu đồ 7 ngày} --- Hoạt động tập luyện trong tuần qua (mỗi
+  cột = 1 ngày)
+\item
+  \textbf{Khóa tập hiện tại} --- Chương trình đang theo, \% hoàn thành
+\item
+  \textbf{Huy hiệu} --- Các badge đã đạt (sáng) và chưa đạt (mờ)
+\end{enumerate}
+
+Kéo xuống để \textbf{làm mới} (pull-to-refresh). Sau khi hoàn thành buổi
+tập, Dashboard \textbf{tự cập nhật} số liệu mới.
+
+\subsubsection{3.2. Dữ liệu lấy từ
+đâu?}\label{dux1eef-liux1ec7u-lux1ea5y-tux1eeb-ux111uxe2u}
+
+Thay vì gọi 5--6 API riêng lẻ, app dùng \textbf{một API duy nhất} trên
+server:
+
+\textbf{\texttt{get\_dashboard\_summary()}} --- hàm PostgreSQL trả về
+JSON gồm:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4706}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5294}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Trường
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Ý nghĩa
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{display\_name} & Tên hiển thị \\
+\texttt{current\_streak} & Chuỗi ngày tập liên tiếp hiện tại \\
+\texttt{longest\_streak} & Kỷ lục chuỗi dài nhất \\
+\texttt{calories\_burned\_today} & Calo đốt hôm nay \\
+\texttt{workouts\_today} & Số buổi tập hôm nay \\
+\texttt{weekly\_workouts} & Mảng 7 ngày: mỗi ngày có \texttt{date},
+\texttt{workouts}, \texttt{calories\_burned} \\
+\texttt{wakeup\_time} & Giờ dậy (dùng cho nhắc tập) \\
+Các cờ \texttt{*\_reminder\_enabled} & Đã bật nhắc nước/tập/badge
+chưa \\
+\end{longtable}
+}
+
+\textbf{Ví dụ JSON trả về:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{\{}
+  \DataTypeTok{"display\_name"}\FunctionTok{:} \StringTok{"Minh Sang"}\FunctionTok{,}
+  \DataTypeTok{"current\_streak"}\FunctionTok{:} \DecValTok{3}\FunctionTok{,}
+  \DataTypeTok{"longest\_streak"}\FunctionTok{:} \DecValTok{5}\FunctionTok{,}
+  \DataTypeTok{"calories\_burned\_today"}\FunctionTok{:} \DecValTok{320}\FunctionTok{,}
+  \DataTypeTok{"workouts\_today"}\FunctionTok{:} \DecValTok{1}\FunctionTok{,}
+  \DataTypeTok{"weekly\_workouts"}\FunctionTok{:} \OtherTok{[}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}24"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{0}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{0} \FunctionTok{\}}\OtherTok{,}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}25"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{1}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{280} \FunctionTok{\}}\OtherTok{,}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}26"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{0}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{0} \FunctionTok{\}}\OtherTok{,}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}27"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{1}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{310} \FunctionTok{\}}\OtherTok{,}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}28"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{1}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{290} \FunctionTok{\}}\OtherTok{,}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}29"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{0}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{0} \FunctionTok{\}}\OtherTok{,}
+    \FunctionTok{\{} \DataTypeTok{"date"}\FunctionTok{:} \StringTok{"2026{-}06{-}30"}\FunctionTok{,} \DataTypeTok{"workouts"}\FunctionTok{:} \DecValTok{1}\FunctionTok{,} \DataTypeTok{"calories\_burned"}\FunctionTok{:} \DecValTok{320} \FunctionTok{\}}
+  \OtherTok{]}\FunctionTok{,}
+  \DataTypeTok{"wakeup\_time"}\FunctionTok{:} \StringTok{"06:30"}\FunctionTok{,}
+  \DataTypeTok{"water\_reminder\_enabled"}\FunctionTok{:} \KeywordTok{true}\FunctionTok{,}
+  \DataTypeTok{"workout\_reminder\_enabled"}\FunctionTok{:} \KeywordTok{false}\FunctionTok{,}
+  \DataTypeTok{"badge\_notifications\_enabled"}\FunctionTok{:} \KeywordTok{true}
+\FunctionTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\subsubsection{3.3. Biểu đồ 7 ngày hoạt động thế
+nào?}\label{biux1ec3u-ux111ux1ed3-7-nguxe0y-houx1ea1t-ux111ux1ed9ng-thux1ebf-nuxe0o}
+
+\textbf{Vấn đề đã gặp:} Khi user chưa tập buổi nào, biểu đồ hiển thị cột
+rất mờ --- trông như lỗi.
+
+\textbf{Cách xử lý:} - Server luôn trả \textbf{đủ 7 ngày} (kể cả ngày
+không tập = 0 buổi, 0 calo). - Client chuẩn hóa lại qua hàm
+\texttt{normalizeWeeklyWorkouts()} --- khớp đúng ngày, điền 0 nếu thiếu.
+- Khi chưa có buổi tập nào → hiển thị thông báo \textbf{``Chưa có buổi
+tập nào''} thay vì cột trống mờ. - Ngày hôm nay được \textbf{highlight}
+màu xanh lá; nhãn CN--T7 luôn hiển thị.
+
+\subsubsection{3.4. Nếu API lỗi thì
+sao?}\label{nux1ebfu-api-lux1ed7i-thuxec-sao}
+
+App có \textbf{phương án dự phòng (fallback):} \texttt{dashboardService}
+tự đọc từng bảng (\texttt{profiles}, \texttt{user\_streaks},
+\texttt{workout\_sessions}) và gom số liệu giống như RPC. User vẫn thấy
+Dashboard, không bị màn hình trắng.
+
+\subsubsection{3.5. File code liên quan}\label{file-code-liuxean-quan}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+File & Vai trò \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{src/screens/DashboardScreen.tsx} & Màn hình chính, gọi load dữ
+liệu \\
+\texttt{src/services/dashboardService.ts} & Gọi RPC + chuẩn hóa 7
+ngày \\
+\texttt{src/components/StatsGrid.tsx} & Lưới calo / buổi tập / kỷ lục \\
+\texttt{src/components/WeeklyProgressChart.tsx} & Biểu đồ cột 7 ngày \\
+\texttt{src/components/WorkoutCard.tsx} & Thẻ khóa tập hiện tại \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 4 --- Badges (Huy hiệu thành
+tích)}\label{phux1ea7n-4-badges-huy-hiux1ec7u-thuxe0nh-tuxedch}
+
+\subsubsection{4.1. Huy hiệu là gì?}\label{huy-hiux1ec7u-luxe0-guxec}
+
+Giống huy chương trong game: khi user đạt mốc nhất định, app \textbf{tự
+cấp huy hiệu} và hiển thị sáng trên Dashboard.
+
+\subsubsection{4.2. Danh sách 8 huy hiệu mặc
+định}\label{danh-suxe1ch-8-huy-hiux1ec7u-mux1eb7c-ux111ux1ecbnh}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+Tên & Điều kiện đạt \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Khởi đầu} & Hoàn thành onboarding lần đầu \\
+\textbf{Buổi tập đầu} & Hoàn thành 1 buổi tập \\
+\textbf{Kiên trì 3 ngày} & Tập liên tiếp 3 ngày (streak ≥ 3) \\
+\textbf{Tuần vàng} & Tập liên tiếp 7 ngày \\
+\textbf{Thép không gỉ} & Tập liên tiếp 30 ngày \\
+\textbf{Hydration Pro} & Đạt mục tiêu uống nước trong 1 ngày \\
+\textbf{Dinh dưỡng chuẩn} & Đạt mục tiêu calo ăn trong 1 ngày \\
+\textbf{Đốt cháy} & Đốt ≥ 500 kcal trong một ngày \\
+\end{longtable}
+}
+
+\subsubsection{4.3. Cơ chế cấp huy hiệu (từng
+bước)}\label{cux1a1-chux1ebf-cux1ea5p-huy-hiux1ec7u-tux1eebng-bux1b0ux1edbc}
+
+\begin{verbatim}
+Mỗi lần mở Dashboard
+    │
+    ▼
+syncUserBadges(userId)
+    │
+    ├─► Thu thập thống kê user:
+    │     • Đã onboarding chưa?
+    │     • Tổng số buổi tập?
+    │     • Streak hiện tại?
+    │     • Bao nhiêu ngày đạt mục tiêu nước/calo?
+    │     • Ngày đốt calo nhiều nhất?
+    │
+    ├─► So sánh với từng huy hiệu (hàm isBadgeEarned)
+    │
+    ├─► Huy hiệu đủ điều kiện mà chưa có → INSERT vào user_badges
+    │
+    └─► Trả danh sách badge (đã đạt / chưa đạt) cho UI
+\end{verbatim}
+
+\textbf{Lưu ý:} Mỗi huy hiệu chỉ đạt \textbf{một lần}. Nếu insert trùng,
+hệ thống bỏ qua lỗi --- không crash.
+
+\subsubsection{4.4. Cấu trúc database}\label{cux1ea5u-truxfac-database}
+
+\textbf{Bảng \texttt{badges}} --- danh mục huy hiệu (dùng chung cho mọi
+user): - \texttt{code} --- mã cố định (vd: \texttt{streak\_7}) -
+\texttt{title}, \texttt{description} --- tên và mô tả hiển thị -
+\texttt{criteria\_type} --- loại điều kiện (streak, workout\_sessions,
+\ldots) - \texttt{criteria\_value} --- ngưỡng (vd: 7 ngày)
+
+\textbf{Bảng \texttt{user\_badges}} --- huy hiệu user đã đạt: -
+\texttt{user\_id} + \texttt{badge\_id} --- mỗi cặp chỉ có 1 lần -
+\texttt{earned\_at} --- thời điểm đạt
+
+\subsubsection{4.5. File code liên quan}\label{file-code-liuxean-quan-1}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}ll@{}}
+\toprule\noalign{}
+File & Vai trò \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{src/services/badgeService.ts} & Đồng bộ và cấp huy hiệu \\
+\texttt{src/lib/badgeCalculations.ts} & Logic kiểm tra đủ điều kiện \\
+\texttt{src/lib/badgeCatalog.ts} & Danh sách fallback khi offline \\
+\texttt{src/components/BadgeGrid.tsx} & Hiển thị lưới huy hiệu \\
+\texttt{src/lib/\_\_tests\_\_/badgeLogic.test.ts} & Unit test logic huy
+hiệu \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 5 --- Notification (Thông báo \& nhắc
+nhở)}\label{phux1ea7n-5-notification-thuxf4ng-buxe1o-nhux1eafc-nhux1edf}
+
+\subsubsection{5.1. Ba loại thông
+báo}\label{ba-loux1ea1i-thuxf4ng-buxe1o}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2400}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5200}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2400}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Loại
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Khi nào bắn
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Lịch
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Nhắc uống nước} & User bật trong cài đặt & 8 mốc/ngày: 7h, 9h,
+11h, 13h, 15h, 17h, 19h, 21h \\
+\textbf{Nhắc tập luyện} & User bật trong cài đặt & Đúng giờ
+\texttt{wakeup\_time} user chọn (vd 6:30 sáng) \\
+\textbf{Huy hiệu mới} & Vừa mở khóa badge mới & Ngay lập tức (1 lần) \\
+\end{longtable}
+}
+
+\subsubsection{5.2. User bật/tắt ở
+đâu?}\label{user-bux1eadttux1eaft-ux1edf-ux111uxe2u}
+
+Menu \textbf{3 gạch} (góc trái) → \textbf{Thông báo} → mở
+\texttt{NotificationSettingsModal}:
+
+\begin{itemize}
+\tightlist
+\item
+  Công tắc nhắc uống nước
+\item
+  Công tắc nhắc tập luyện (+ chọn giờ)
+\item
+  Công tắc thông báo huy hiệu
+\end{itemize}
+
+Cài đặt lưu vào bảng \textbf{\texttt{profiles}} trên Supabase (đồng bộ
+giữa các thiết bị).
+
+\subsubsection{5.3. Luồng bật nhắc tập (ví
+dụ)}\label{luux1ed3ng-bux1eadt-nhux1eafc-tux1eadp-vuxed-dux1ee5}
+
+\begin{verbatim}
+User bật "Nhắc tập luyện"
+    │
+    ▼
+App xin quyền thông báo từ hệ điều hành (iOS/Android)
+    │
+    ├─ User từ chối → báo lỗi, không bật
+    │
+    └─ User đồng ý
+          │
+          ▼
+    Lập lịch thông báo lặp hàng ngày đúng giờ wakeup_time
+          │
+          ▼
+    Lưu id thông báo vào AsyncStorage (để hủy sau này)
+          │
+          ▼
+    Ghi workout_reminder_enabled = true vào profiles
+\end{verbatim}
+
+Mỗi ngày đúng giờ, điện thoại hiện: \textbf{``Giờ tập luyện --- Đã đến
+giờ tập!''}
+
+\subsubsection{5.4. Lưu ý quan trọng về Expo
+Go}\label{lux1b0u-uxfd-quan-trux1ecdng-vux1ec1-expo-go}
+
+\textbf{Thông báo KHÔNG hoạt động trên Expo Go} (app test qua QR code).
+Chỉ chạy trên: - \textbf{Development build} (build riêng qua EAS) -
+\textbf{Bản release} (APK/IPA cài trên máy)
+
+Code xử lý an toàn: trên Expo Go, module thông báo \textbf{không load}
+--- app không crash, chỉ hiện thông báo hướng dẫn khi user cố bật nhắc.
+
+\subsubsection{5.5. Khôi phục nhắc khi mở lại
+app}\label{khuxf4i-phux1ee5c-nhux1eafc-khi-mux1edf-lux1ea1i-app}
+
+Sau khi đăng nhập và hoàn thành onboarding, \texttt{App.tsx} gọi
+\texttt{syncAllRemindersOnLaunch()}: - Đọc cờ từ \texttt{profiles} (user
+đã bật nhắc nước/tập chưa) - Nếu đã bật → đặt lại lịch thông báo trên
+thiết bị
+
+→ User cài app mới hoặc xóa cache vẫn được nhắc đúng theo cài đặt cũ.
+
+\subsubsection{5.6. File code liên quan}\label{file-code-liuxean-quan-2}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+File
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Vai trò
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{src/services/notificationService.ts} & Nhắc tập, prefs, thông
+báo badge \\
+\texttt{src/services/waterReminderService.ts} & Nhắc uống nước (8
+mốc) \\
+\texttt{src/components/NotificationSettingsModal.tsx} & Giao diện
+bật/tắt \\
+\texttt{src/components/AppMenuDrawer.tsx} & Menu mở modal nhắc nhở \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 6 --- Luồng hoạt động tổng
+hợp}\label{phux1ea7n-6-luux1ed3ng-houx1ea1t-ux111ux1ed9ng-tux1ed5ng-hux1ee3p}
+
+\subsubsection{Kịch bản A: User mở app buổi
+sáng}\label{kux1ecbch-bux1ea3n-a-user-mux1edf-app-buux1ed5i-suxe1ng}
+
+\begin{verbatim}
+1. Đăng nhập → đã onboarding
+2. App đồng bộ nhắc nhở (nếu đã bật trước đó)
+3. Vào tab Home (Dashboard)
+4. Tải song song:
+   • Số liệu Dashboard (RPC)
+   • Đồng bộ huy hiệu (cấp mới nếu đủ điều kiện)
+   • Đọc cài đặt thông báo
+5. Hiển thị: calo, biểu đồ 7 ngày, huy hiệu
+6. Nếu vừa đạt huy hiệu mới → thông báo đẩy "Bạn vừa mở khóa …"
+\end{verbatim}
+
+\subsubsection{Kịch bản B: User hoàn thành buổi
+tập}\label{kux1ecbch-bux1ea3n-b-user-houxe0n-thuxe0nh-buux1ed5i-tux1eadp}
+
+\begin{verbatim}
+1. Làm xong bài tập cuối trong WorkoutDetailScreen
+2. Server ghi workout_session + cập nhật streak
+3. App tăng refreshKey → Dashboard tải lại
+4. Biểu đồ thêm cột hôm nay, calo tăng
+5. syncUserBadges có thể cấp "Buổi tập đầu", "Kiên trì 3 ngày"…
+6. Thông báo huy hiệu mới (nếu bật)
+\end{verbatim}
+
+\subsubsection{Kịch bản C: User bật nhắc uống
+nước}\label{kux1ecbch-bux1ea3n-c-user-bux1eadt-nhux1eafc-uux1ed1ng-nux1b0ux1edbc}
+
+\begin{verbatim}
+1. Menu 3 gạch → Thông báo → Bật "Nhắc uống nước"
+2. Xin quyền OS → lập 8 thông báo lặp ngày
+3. Lưu cờ water_reminder_enabled = true
+4. Từ 7h–21h, mỗi 2 tiếng nhận: "Đã đến giờ uống nước!"
+\end{verbatim}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 7 --- Backend
+(Database)}\label{phux1ea7n-7-backend-database}
+
+\subsubsection{7.1. Migration cần
+chạy}\label{migration-cux1ea7n-chux1ea1y}
+
+File:
+\texttt{supabase/migrations/20260627200000\_dashboard\_badges\_notifications.sql}
+
+\textbf{Phải chạy SAU} migration workout (tạo bảng \texttt{profiles},
+\texttt{workout\_sessions}, \texttt{user\_streaks}).
+
+Thứ tự đầy đủ:
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.2727}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.7273}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Bước
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+File migration
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+1 & \texttt{20260627000000\_nutrition\_water\_health.sql} \\
+2 & \texttt{20260627173357\_workout\_onboarding\_atomic\_updates.sql} \\
+3 &
+\textbf{\texttt{20260627200000\_dashboard\_badges\_notifications.sql}} ←
+module này \\
+4 & \texttt{20260701100000\_add\_new\_programs\_v2.sql} \\
+\end{longtable}
+}
+
+\subsubsection{7.2. Bảng và cột module tạo
+thêm}\label{bux1ea3ng-vuxe0-cux1ed9t-module-tux1ea1o-thuxeam}
+
+\textbf{Mở rộng \texttt{profiles}:} -
+\texttt{workout\_reminder\_enabled} --- bật nhắc tập (mặc định: tắt) -
+\texttt{badge\_notifications\_enabled} --- thông báo huy hiệu (mặc định:
+bật)
+
+\textbf{Bảng mới:} - \texttt{badges} --- 8 huy hiệu mặc định -
+\texttt{user\_badges} --- huy hiệu user đã đạt
+
+\textbf{Hàm RPC mới:} - \texttt{get\_dashboard\_summary()} --- trả JSON
+tổng hợp Dashboard
+
+\subsubsection{7.3. Bảo mật}\label{bux1ea3o-mux1eadt}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{RLS:} User chỉ xem/cấp huy hiệu của chính mình; danh mục
+  \texttt{badges} ai cũng đọc được.
+\item
+  \textbf{RPC:} Chạy với quyền người gọi (\texttt{SECURITY\ INVOKER}),
+  từ chối nếu chưa đăng nhập.
+\item
+  Mỗi user \textbf{không thể} xem streak/calo/huy hiệu của user khác.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 8 --- Kiểm thử}\label{phux1ea7n-8-kiux1ec3m-thux1eed}
+
+\subsubsection{8.1. Lệnh chạy test tự
+động}\label{lux1ec7nh-chux1ea1y-test-tux1ef1-ux111ux1ed9ng}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{npm}\NormalTok{ run test:badges    }\CommentTok{\# test logic huy hiệu}
+\ExtensionTok{npm}\NormalTok{ test               }\CommentTok{\# chạy tất cả test}
+\ExtensionTok{npm}\NormalTok{ run typecheck      }\CommentTok{\# kiểm tra TypeScript}
+\end{Highlighting}
+\end{Shaded}
+
+\subsubsection{8.2. Checklist test thủ
+công}\label{checklist-test-thux1ee7-cuxf4ng}
+
+\textbf{Dashboard:} - {[} {]} User mới (0 buổi tập): biểu đồ hiện ``Chưa
+có buổi tập'', không cột mờ - {[} {]} Có buổi tập: cột đúng ngày, hôm
+nay highlight xanh - {[} {]} Kéo xuống refresh → số liệu cập nhật - {[}
+{]} Sau khi tập xong → Dashboard tự refresh
+
+\textbf{Huy hiệu:} - {[} {]} Tập buổi đầu → nhận ``Buổi tập đầu'' - {[}
+{]} Streak 3 ngày → nhận ``Kiên trì 3 ngày'' - {[} {]} Huy hiệu đã đạt
+sáng, chưa đạt mờ
+
+\textbf{Thông báo:} - {[} {]} Expo Go: bật nhắc → báo lỗi hướng dẫn,
+không crash - {[} {]} Dev build: bật nhắc nước → nhận đúng 8 mốc - {[}
+{]} Dev build: bật nhắc tập → nhận đúng giờ đã chọn - {[} {]} Đạt huy
+hiệu mới + bật thông báo badge → có thông báo đẩy
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 9 --- Tóm tắt
+nhanh}\label{phux1ea7n-9-tuxf3m-tux1eaft-nhanh}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.3913}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6087}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Câu hỏi
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Trả lời ngắn
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Dashboard lấy data từ đâu? & RPC \texttt{get\_dashboard\_summary()} ---
+1 lần gọi, trả JSON đầy đủ \\
+Huy hiệu cấp khi nào? & Mỗi lần mở Dashboard, \texttt{syncUserBadges}
+kiểm tra và cấp tự động \\
+Nhắc nhở lưu ở đâu? & Cờ trong \texttt{profiles} (server) + id thông báo
+trong AsyncStorage (máy) \\
+Tại sao Expo Go không có thông báo? & Giới hạn của Expo Go --- cần
+development build \\
+Biểu đồ 7 ngày trống? & Đã fix: empty state + luôn đủ 7 ngày từ
+server \\
+File migration module? &
+\texttt{20260627200000\_dashboard\_badges\_notifications.sql} \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Phần 10 --- Giải thích code \& hàm chi
+tiết}\label{phux1ea7n-10-giux1ea3i-thuxedch-code-huxe0m-chi-tiux1ebft}
+
+Phần này giải thích \textbf{từng hàm quan trọng}: đầu vào, đầu ra, từng
+bước xử lý và lý do thiết kế.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.1.
+\texttt{getDashboardSummary(userId)} ---
+\texttt{dashboardService.ts}}{10.1. getDashboardSummary(userId) --- dashboardService.ts}}\label{getdashboardsummaryuserid-dashboardservice.ts}
+
+\textbf{Mục đích:} Lấy toàn bộ số liệu Dashboard trong một lần gọi.
+
+\textbf{Code:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{getDashboardSummary}\NormalTok{(userId}\OperatorTok{:} \DataTypeTok{string}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{DashboardSummary}\OperatorTok{\textgreater{}}\NormalTok{ \{}
+  \KeywordTok{const}\NormalTok{ \{ data}\OperatorTok{,}\NormalTok{ error \} }\OperatorTok{=} \ControlFlowTok{await}\NormalTok{ supabase}\OperatorTok{.}\FunctionTok{rpc}\NormalTok{(}\StringTok{\textquotesingle{}get\_dashboard\_summary\textquotesingle{}}\NormalTok{)}\OperatorTok{;}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\NormalTok{error }\OperatorTok{\&\&}\NormalTok{ data) \{}
+    \KeywordTok{const}\NormalTok{ summary }\OperatorTok{=}\NormalTok{ data }\ImportTok{as}\NormalTok{ DashboardSummary}\OperatorTok{;}
+    \ControlFlowTok{return}\NormalTok{ \{}
+      \OperatorTok{...}\NormalTok{summary}\OperatorTok{,}
+\NormalTok{      weekly\_workouts}\OperatorTok{:} \FunctionTok{normalizeWeeklyWorkouts}\NormalTok{(summary}\OperatorTok{.}\AttributeTok{weekly\_workouts}\NormalTok{)}\OperatorTok{,}
+\NormalTok{    \}}\OperatorTok{;}
+\NormalTok{  \}}
+  \ControlFlowTok{return} \FunctionTok{buildDashboardSummaryClient}\NormalTok{(userId)}\OperatorTok{;}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Cách hoạt động (từng bước):}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2069}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3793}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4138}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Bước
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Hành động
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Giải thích
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+1 &
+\texttt{supabase.rpc(\textquotesingle{}get\_dashboard\_summary\textquotesingle{})}
+& Gọi hàm PostgreSQL trên server. JWT của user tự động gửi kèm → server
+biết đang query cho ai. \\
+2 & \texttt{if\ (!error\ \&\&\ data)} & RPC thành công → dùng kết quả từ
+server (nhanh, 1 round-trip). \\
+3 & \texttt{normalizeWeeklyWorkouts(...)} & Chuẩn hóa mảng 7 ngày phía
+client (phòng date lệch format, thiếu ngày). \\
+4 & \texttt{buildDashboardSummaryClient(userId)} & RPC lỗi (chưa chạy
+migration, mạng yếu\ldots) → tự đọc từng bảng và gom số liệu. \\
+\end{longtable}
+}
+
+\textbf{Tại sao có fallback?} User vẫn thấy Dashboard khi migration chưa
+chạy hoặc RPC tạm lỗi --- tránh màn hình trắng.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.2.
+\texttt{normalizeWeeklyWorkouts(raw)} ---
+\texttt{dashboardService.ts}}{10.2. normalizeWeeklyWorkouts(raw) --- dashboardService.ts}}\label{normalizeweeklyworkoutsraw-dashboardservice.ts}
+
+\textbf{Mục đích:} Đảm bảo biểu đồ \textbf{luôn nhận đúng 7 ngày}, kể cả
+khi server trả thiếu hoặc date kèm timestamp.
+
+\textbf{Code:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{export} \KeywordTok{function} \FunctionTok{normalizeWeeklyWorkouts}\NormalTok{(raw}\OperatorTok{:} \DataTypeTok{unknown}\NormalTok{)}\OperatorTok{:}\NormalTok{ WeeklyWorkoutDay[] \{}
+  \KeywordTok{const}\NormalTok{ base }\OperatorTok{=} \FunctionTok{EMPTY\_WEEKLY}\NormalTok{()}\OperatorTok{;}  \CommentTok{// tạo sẵn 7 ngày, mỗi ngày workouts=0, calories=0}
+  \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\BuiltInTok{Array}\OperatorTok{.}\FunctionTok{isArray}\NormalTok{(raw) }\OperatorTok{||}\NormalTok{ raw}\OperatorTok{.}\AttributeTok{length} \OperatorTok{===} \DecValTok{0}\NormalTok{) }\ControlFlowTok{return}\NormalTok{ base}\OperatorTok{;}
+
+  \KeywordTok{const}\NormalTok{ map }\OperatorTok{=} \KeywordTok{new} \BuiltInTok{Map}\NormalTok{(base}\OperatorTok{.}\FunctionTok{map}\NormalTok{((day) }\KeywordTok{=\textgreater{}}\NormalTok{ [day}\OperatorTok{.}\AttributeTok{date}\OperatorTok{,}\NormalTok{ \{ }\OperatorTok{...}\NormalTok{day \}]))}\OperatorTok{;}
+  \ControlFlowTok{for}\NormalTok{ (}\KeywordTok{const}\NormalTok{ item }\KeywordTok{of}\NormalTok{ raw) \{}
+    \KeywordTok{const}\NormalTok{ date }\OperatorTok{=} \FunctionTok{normalizeDateString}\NormalTok{(}\BuiltInTok{String}\NormalTok{(row}\OperatorTok{.}\AttributeTok{date} \OperatorTok{??} \StringTok{\textquotesingle{}\textquotesingle{}}\NormalTok{))}\OperatorTok{;} \CommentTok{// "2026{-}06{-}30 00:00:00" → "2026{-}06{-}30"}
+    \ControlFlowTok{if}\NormalTok{ (}\OperatorTok{!}\NormalTok{map}\OperatorTok{.}\FunctionTok{has}\NormalTok{(date)) }\ControlFlowTok{continue}\OperatorTok{;}
+\NormalTok{    map}\OperatorTok{.}\FunctionTok{set}\NormalTok{(date}\OperatorTok{,}\NormalTok{ \{ date}\OperatorTok{,}\NormalTok{ workouts}\OperatorTok{:} \BuiltInTok{Number}\NormalTok{(row}\OperatorTok{.}\AttributeTok{workouts} \OperatorTok{??} \DecValTok{0}\NormalTok{)}\OperatorTok{,}\NormalTok{ calories\_burned}\OperatorTok{:} \BuiltInTok{Number}\NormalTok{(row}\OperatorTok{.}\AttributeTok{calories\_burned} \OperatorTok{??} \DecValTok{0}\NormalTok{) \})}\OperatorTok{;}
+\NormalTok{  \}}
+  \ControlFlowTok{return}\NormalTok{ base}\OperatorTok{.}\FunctionTok{map}\NormalTok{((day) }\KeywordTok{=\textgreater{}}\NormalTok{ map}\OperatorTok{.}\FunctionTok{get}\NormalTok{(day}\OperatorTok{.}\AttributeTok{date}\NormalTok{) }\OperatorTok{??}\NormalTok{ day)}\OperatorTok{;}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Ví dụ minh họa:}
+
+\begin{verbatim}
+Input từ server (thiếu ngày, date lệch format):
+  [{ date: "2026-06-30 00:00:00", workouts: 1, calories_burned: 320 }]
+
+EMPTY_WEEKLY() tạo base 7 ngày: 24/6 → 30/6, tất cả = 0
+
+Sau khi merge vào map:
+  30/6 → workouts: 1, calories: 320
+  các ngày khác → giữ 0
+
+Output: mảng 7 phần tử, đúng thứ tự ngày
+\end{verbatim}
+
+\textbf{Hàm phụ trợ \texttt{EMPTY\_WEEKLY()}:} Dùng
+\texttt{localDateDaysAgo(6\ -\ index)} --- tính ngày theo
+\textbf{timezone máy}, không dùng UTC (tránh lệch ngày khi user ở VN).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.3.
+\texttt{buildDashboardSummaryClient(userId)} --- fallback
+client}{10.3. buildDashboardSummaryClient(userId) --- fallback client}}\label{builddashboardsummaryclientuserid-fallback-client}
+
+\textbf{Mục đích:} Tự gom số liệu khi RPC không dùng được.
+
+\textbf{Cách hoạt động:}
+
+\begin{verbatim}
+Promise.all (chạy song song 3 query):
+  ├─ getProfile(userId)           → display_name, wakeup_time, cờ nhắc nhở
+  ├─ user_streaks                 → current_streak, longest_streak
+  └─ workout_sessions (7 ngày)    → workout_date, total_calories
+
+Duyệt từng session → cộng dồn vào weeklyMap theo ngày
+Lọc session hôm nay → tính calories_burned_today, workouts_today
+Trả object DashboardSummary giống hệt RPC
+\end{verbatim}
+
+\textbf{Ưu điểm \texttt{Promise.all}:} 3 query chạy \textbf{đồng thời}
+thay vì tuần tự → nhanh hơn \textasciitilde3 lần.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.4. \texttt{loadDashboard()} ---
+\texttt{DashboardScreen.tsx}}{10.4. loadDashboard() --- DashboardScreen.tsx}}\label{loaddashboard-dashboardscreen.tsx}
+
+\textbf{Mục đích:} Hàm trung tâm tải và hiển thị toàn bộ Dashboard.
+
+\textbf{Code:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{const}\NormalTok{ loadDashboard }\OperatorTok{=} \FunctionTok{useCallback}\NormalTok{(}\KeywordTok{async}\NormalTok{ () }\KeywordTok{=\textgreater{}}\NormalTok{ \{}
+  \KeywordTok{const}\NormalTok{ [dashboard}\OperatorTok{,}\NormalTok{ badgeList}\OperatorTok{,}\NormalTok{ prefs] }\OperatorTok{=} \ControlFlowTok{await} \BuiltInTok{Promise}\OperatorTok{.}\FunctionTok{all}\NormalTok{([}
+    \FunctionTok{getDashboardSummary}\NormalTok{(userId)}\OperatorTok{,}
+    \FunctionTok{syncUserBadges}\NormalTok{(userId)}\OperatorTok{,}
+    \FunctionTok{getNotificationPreferences}\NormalTok{(userId)}\OperatorTok{.}\FunctionTok{catch}\NormalTok{(() }\KeywordTok{=\textgreater{}} \KeywordTok{null}\NormalTok{)}\OperatorTok{,}
+\NormalTok{  ])}\OperatorTok{;}
+
+  \FunctionTok{setSummary}\NormalTok{(dashboard)}\OperatorTok{;}
+  \FunctionTok{setBadges}\NormalTok{((previous) }\KeywordTok{=\textgreater{}}\NormalTok{ \{}
+    \ControlFlowTok{if}\NormalTok{ (prefs}\OperatorTok{?.}\AttributeTok{badge\_notifications\_enabled}\NormalTok{) \{}
+      \KeywordTok{const}\NormalTok{ previousEarned }\OperatorTok{=} \KeywordTok{new} \BuiltInTok{Set}\NormalTok{(previous}\OperatorTok{.}\FunctionTok{filter}\NormalTok{(b }\KeywordTok{=\textgreater{}}\NormalTok{ b}\OperatorTok{.}\AttributeTok{earned}\NormalTok{)}\OperatorTok{.}\FunctionTok{map}\NormalTok{(b }\KeywordTok{=\textgreater{}}\NormalTok{ b}\OperatorTok{.}\AttributeTok{id}\NormalTok{))}\OperatorTok{;}
+      \ControlFlowTok{for}\NormalTok{ (}\KeywordTok{const}\NormalTok{ badge }\KeywordTok{of}\NormalTok{ badgeList) \{}
+        \ControlFlowTok{if}\NormalTok{ (badge}\OperatorTok{.}\AttributeTok{earned} \OperatorTok{\&\&} \OperatorTok{!}\NormalTok{previousEarned}\OperatorTok{.}\FunctionTok{has}\NormalTok{(badge}\OperatorTok{.}\AttributeTok{id}\NormalTok{)) \{}
+          \KeywordTok{void} \FunctionTok{notifyBadgeEarned}\NormalTok{(}\StringTok{\textquotesingle{}Huy hiệu mới\textquotesingle{}}\OperatorTok{,} \VerbatimStringTok{\textasciigrave{}Bạn vừa mở khóa "}\SpecialCharTok{$\{}\NormalTok{badge}\OperatorTok{.}\AttributeTok{title}\SpecialCharTok{\}}\VerbatimStringTok{"\textasciigrave{}}\NormalTok{)}\OperatorTok{;}
+\NormalTok{        \}}
+\NormalTok{      \}}
+\NormalTok{    \}}
+    \ControlFlowTok{return}\NormalTok{ badgeList}\OperatorTok{;}
+\NormalTok{  \})}\OperatorTok{;}
+\NormalTok{\}}\OperatorTok{,}\NormalTok{ [userId])}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Giải thích từng phần:}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\texttt{Promise.all}} --- Tải dashboard, badge, prefs
+  \textbf{cùng lúc} (3 request song song).
+\item
+  \textbf{\texttt{setSummary(dashboard)}} --- Cập nhật state → React
+  re-render StatsGrid, biểu đồ, WorkoutCard.
+\item
+  \textbf{\texttt{setBadges} với callback} --- So sánh badge \textbf{cũ}
+  vs \textbf{mới}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Tạo \texttt{Set} các id badge đã đạt trước đó
+    (\texttt{previousEarned}).
+  \item
+    Duyệt \texttt{badgeList} mới: nếu badge vừa đạt (\texttt{earned}) mà
+    \textbf{chưa có trong Set} → gọi \texttt{notifyBadgeEarned}.
+  \item
+    Chỉ bắn thông báo khi
+    \texttt{badge\_notifications\_enabled\ ===\ true}.
+  \end{itemize}
+\item
+  \textbf{\texttt{useCallback(...,\ {[}userId{]})}} --- Hàm chỉ tạo lại
+  khi \texttt{userId} đổi, tránh re-render vô ích.
+\item
+  \textbf{\texttt{refreshKey}} (prop từ \texttt{App.tsx}) --- Tăng sau
+  khi hoàn thành buổi tập → \texttt{useEffect} gọi lại
+  \texttt{loadDashboard}.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.5. \texttt{WeeklyProgressChart} ---
+biểu đồ 7
+ngày}{10.5. WeeklyProgressChart --- biểu đồ 7 ngày}}\label{weeklyprogresschart-biux1ec3u-ux111ux1ed3-7-nguxe0y}
+
+\textbf{Input:} \texttt{days:\ WeeklyWorkoutDay{[}{]}} từ
+\texttt{summary.weekly\_workouts}.
+
+\textbf{Logic chính:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{const}\NormalTok{ chartDays }\OperatorTok{=} \FunctionTok{useMemo}\NormalTok{(}
+\NormalTok{  () }\KeywordTok{=\textgreater{}}\NormalTok{ (days}\OperatorTok{.}\AttributeTok{length} \OperatorTok{===} \DecValTok{7} \OperatorTok{?}\NormalTok{ days }\OperatorTok{:} \FunctionTok{buildFallbackDays}\NormalTok{())}\OperatorTok{,}
+\NormalTok{  [days]}\OperatorTok{,}
+\NormalTok{)}\OperatorTok{;}
+\KeywordTok{const}\NormalTok{ totalWorkouts }\OperatorTok{=}\NormalTok{ chartDays}\OperatorTok{.}\FunctionTok{reduce}\NormalTok{((sum}\OperatorTok{,}\NormalTok{ day) }\KeywordTok{=\textgreater{}}\NormalTok{ sum }\OperatorTok{+}\NormalTok{ day}\OperatorTok{.}\AttributeTok{workouts}\OperatorTok{,} \DecValTok{0}\NormalTok{)}\OperatorTok{;}
+\KeywordTok{const}\NormalTok{ hasActivity }\OperatorTok{=}\NormalTok{ totalWorkouts }\OperatorTok{\textgreater{}} \DecValTok{0}\OperatorTok{;}
+\KeywordTok{const}\NormalTok{ maxWorkouts }\OperatorTok{=} \BuiltInTok{Math}\OperatorTok{.}\FunctionTok{max}\NormalTok{(}\OperatorTok{...}\NormalTok{chartDays}\OperatorTok{.}\FunctionTok{map}\NormalTok{(d }\KeywordTok{=\textgreater{}}\NormalTok{ d}\OperatorTok{.}\AttributeTok{workouts}\NormalTok{)}\OperatorTok{,} \DecValTok{1}\NormalTok{)}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Biến
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Ý nghĩa
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{chartDays} & Luôn 7 ngày (fallback nếu input sai) \\
+\texttt{hasActivity} & \texttt{false} → hiện empty state ``Chưa có buổi
+tập'' \\
+\texttt{maxWorkouts} & Ngày tập nhiều nhất = 100\% chiều cao cột; tối
+thiểu 1 để tránh chia cho 0 \\
+\end{longtable}
+}
+
+\textbf{Tính chiều cao cột:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{const}\NormalTok{ fillHeight }\OperatorTok{=}\NormalTok{ active}
+  \OperatorTok{?} \BuiltInTok{Math}\OperatorTok{.}\FunctionTok{max}\NormalTok{(}\DecValTok{12}\OperatorTok{,}\NormalTok{ (day}\OperatorTok{.}\AttributeTok{workouts} \OperatorTok{/}\NormalTok{ maxWorkouts) }\OperatorTok{*}\NormalTok{ CHART\_HEIGHT)}
+  \OperatorTok{:} \DecValTok{0}\OperatorTok{;}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{itemize}
+\tightlist
+\item
+  Ngày có tập (\texttt{active}): cột cao tỉ lệ
+  \texttt{workouts\ /\ maxWorkouts}, tối thiểu 12px.
+\item
+  Ngày không tập: hiện chấm nhỏ (\texttt{barEmpty}) thay vì cột mờ 8px
+  (bug cũ đã fix).
+\item
+  \texttt{isToday}: viền xanh lá (\texttt{barTrackToday}) + nhãn ngày
+  đậm.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.6.
+\texttt{isBadgeEarned(badge,\ stats)} ---
+\texttt{badgeCalculations.ts}}{10.6. isBadgeEarned(badge, stats) --- badgeCalculations.ts}}\label{isbadgeearnedbadge-stats-badgecalculations.ts}
+
+\textbf{Mục đích:} Hàm \textbf{thuần} (không gọi mạng) --- kiểm tra 1
+huy hiệu đã đủ điều kiện chưa. Dễ unit test.
+
+\textbf{Code:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{export} \KeywordTok{function} \FunctionTok{isBadgeEarned}\NormalTok{(badge}\OperatorTok{:}\NormalTok{ Badge}\OperatorTok{,}\NormalTok{ stats}\OperatorTok{:}\NormalTok{ BadgeStats)}\OperatorTok{:} \DataTypeTok{boolean}\NormalTok{ \{}
+  \ControlFlowTok{switch}\NormalTok{ (badge}\OperatorTok{.}\AttributeTok{criteria\_type}\NormalTok{) \{}
+    \ControlFlowTok{case} \StringTok{\textquotesingle{}onboarding\textquotesingle{}}\OperatorTok{:}          \ControlFlowTok{return}\NormalTok{ stats}\OperatorTok{.}\AttributeTok{onboardingComplete}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{\textquotesingle{}workout\_sessions\textquotesingle{}}\OperatorTok{:}    \ControlFlowTok{return}\NormalTok{ stats}\OperatorTok{.}\AttributeTok{workoutSessions} \OperatorTok{\textgreater{}=}\NormalTok{ badge}\OperatorTok{.}\AttributeTok{criteria\_value}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{\textquotesingle{}streak\textquotesingle{}}\OperatorTok{:}              \ControlFlowTok{return}\NormalTok{ stats}\OperatorTok{.}\AttributeTok{currentStreak} \OperatorTok{\textgreater{}=}\NormalTok{ badge}\OperatorTok{.}\AttributeTok{criteria\_value}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{\textquotesingle{}water\_goal\_days\textquotesingle{}}\OperatorTok{:}     \ControlFlowTok{return}\NormalTok{ stats}\OperatorTok{.}\AttributeTok{waterGoalDays} \OperatorTok{\textgreater{}=}\NormalTok{ badge}\OperatorTok{.}\AttributeTok{criteria\_value}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{\textquotesingle{}nutrition\_goal\_days\textquotesingle{}}\OperatorTok{:} \ControlFlowTok{return}\NormalTok{ stats}\OperatorTok{.}\AttributeTok{nutritionGoalDays} \OperatorTok{\textgreater{}=}\NormalTok{ badge}\OperatorTok{.}\AttributeTok{criteria\_value}\OperatorTok{;}
+    \ControlFlowTok{case} \StringTok{\textquotesingle{}calories\_burned\_day\textquotesingle{}}\OperatorTok{:} \ControlFlowTok{return}\NormalTok{ stats}\OperatorTok{.}\AttributeTok{maxCaloriesBurnedDay} \OperatorTok{\textgreater{}=}\NormalTok{ badge}\OperatorTok{.}\AttributeTok{criteria\_value}\OperatorTok{;}
+    \ControlFlowTok{default}\OperatorTok{:}                    \ControlFlowTok{return} \KeywordTok{false}\OperatorTok{;}
+\NormalTok{  \}}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Ví dụ:} Badge ``Kiên trì 3 ngày'' có
+\texttt{criteria\_type:\ \textquotesingle{}streak\textquotesingle{}},
+\texttt{criteria\_value:\ 3}. - \texttt{stats.currentStreak\ =\ 2} →
+\texttt{false} (chưa đạt). - \texttt{stats.currentStreak\ =\ 3} →
+\texttt{true} (đạt).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.7. \texttt{loadBadgeStats(userId)} ---
+\texttt{badgeService.ts}}{10.7. loadBadgeStats(userId) --- badgeService.ts}}\label{loadbadgestatsuserid-badgeservice.ts}
+
+\textbf{Mục đích:} Gom \textbf{một lần} tất cả thống kê cần để kiểm tra
+huy hiệu.
+
+\textbf{Các chỉ số thu thập:}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4211}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5789}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Chỉ số
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Cách tính
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{onboardingComplete} &
+\texttt{profiles.onboarding\_completed\ ===\ true} \\
+\texttt{workoutSessions} & \texttt{COUNT(*)} từ
+\texttt{workout\_sessions} \\
+\texttt{currentStreak} & \texttt{user\_streaks.current\_streak} \\
+\texttt{waterGoalDays} & Đếm ngày
+\texttt{water\_ml\ \textgreater{}=\ water\_goal\_ml} (+ hôm nay nếu
+đạt) \\
+\texttt{nutritionGoalDays} & Đếm ngày
+\texttt{calories\_consumed\ \textgreater{}=\ daily\_calorie\_goal} \\
+\texttt{maxCaloriesBurnedDay} & Gom calo theo \texttt{workout\_date},
+lấy max \\
+\end{longtable}
+}
+
+\textbf{Lưu ý:} Hôm nay được tính riêng qua \texttt{getDailyNutrition} /
+\texttt{getTodayWater} vì có thể chưa có dòng trong bảng daily (chưa ghi
+trong ngày).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.8. \texttt{syncUserBadges(userId)} ---
+cấp huy hiệu tự
+động}{10.8. syncUserBadges(userId) --- cấp huy hiệu tự động}}\label{syncuserbadgesuserid-cux1ea5p-huy-hiux1ec7u-tux1ef1-ux111ux1ed9ng}
+
+\textbf{Code:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{syncUserBadges}\NormalTok{(userId}\OperatorTok{:} \DataTypeTok{string}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{BadgeWithStatus[]}\OperatorTok{\textgreater{}}\NormalTok{ \{}
+  \KeywordTok{const}\NormalTok{ [\{ data}\OperatorTok{:}\NormalTok{ badges \}}\OperatorTok{,}\NormalTok{ stats}\OperatorTok{,}\NormalTok{ \{ data}\OperatorTok{:}\NormalTok{ earned \}] }\OperatorTok{=} \ControlFlowTok{await} \BuiltInTok{Promise}\OperatorTok{.}\FunctionTok{all}\NormalTok{([}
+\NormalTok{    supabase}\OperatorTok{.}\FunctionTok{from}\NormalTok{(}\StringTok{\textquotesingle{}badges\textquotesingle{}}\NormalTok{)}\OperatorTok{.}\FunctionTok{select}\NormalTok{(}\StringTok{\textquotesingle{}*\textquotesingle{}}\NormalTok{)}\OperatorTok{.}\FunctionTok{order}\NormalTok{(}\StringTok{\textquotesingle{}sort\_order\textquotesingle{}}\NormalTok{)}\OperatorTok{,}
+    \FunctionTok{loadBadgeStats}\NormalTok{(userId)}\OperatorTok{,}
+\NormalTok{    supabase}\OperatorTok{.}\FunctionTok{from}\NormalTok{(}\StringTok{\textquotesingle{}user\_badges\textquotesingle{}}\NormalTok{)}\OperatorTok{.}\FunctionTok{select}\NormalTok{(}\StringTok{\textquotesingle{}badge\_id\textquotesingle{}}\NormalTok{)}\OperatorTok{.}\FunctionTok{eq}\NormalTok{(}\StringTok{\textquotesingle{}user\_id\textquotesingle{}}\OperatorTok{,}\NormalTok{ userId)}\OperatorTok{,}
+\NormalTok{  ])}\OperatorTok{;}
+
+  \KeywordTok{const}\NormalTok{ earnedIds }\OperatorTok{=} \KeywordTok{new} \BuiltInTok{Set}\NormalTok{((earned }\OperatorTok{??}\NormalTok{ [])}\OperatorTok{.}\FunctionTok{map}\NormalTok{(r }\KeywordTok{=\textgreater{}}\NormalTok{ r}\OperatorTok{.}\AttributeTok{badge\_id}\NormalTok{))}\OperatorTok{;}
+  \KeywordTok{const}\NormalTok{ toAward }\OperatorTok{=}\NormalTok{ badges}\OperatorTok{.}\FunctionTok{filter}\NormalTok{(b }\KeywordTok{=\textgreater{}} \OperatorTok{!}\NormalTok{earnedIds}\OperatorTok{.}\FunctionTok{has}\NormalTok{(b}\OperatorTok{.}\AttributeTok{id}\NormalTok{) }\OperatorTok{\&\&} \FunctionTok{isBadgeEarned}\NormalTok{(b}\OperatorTok{,}\NormalTok{ stats))}\OperatorTok{;}
+
+  \ControlFlowTok{if}\NormalTok{ (toAward}\OperatorTok{.}\AttributeTok{length} \OperatorTok{\textgreater{}} \DecValTok{0}\NormalTok{) \{}
+    \ControlFlowTok{await}\NormalTok{ supabase}\OperatorTok{.}\FunctionTok{from}\NormalTok{(}\StringTok{\textquotesingle{}user\_badges\textquotesingle{}}\NormalTok{)}\OperatorTok{.}\FunctionTok{insert}\NormalTok{(}
+\NormalTok{      toAward}\OperatorTok{.}\FunctionTok{map}\NormalTok{(b }\KeywordTok{=\textgreater{}}\NormalTok{ (\{ user\_id}\OperatorTok{:}\NormalTok{ userId}\OperatorTok{,}\NormalTok{ badge\_id}\OperatorTok{:}\NormalTok{ b}\OperatorTok{.}\AttributeTok{id}\NormalTok{ \}))}\OperatorTok{,}
+\NormalTok{    )}\OperatorTok{;}
+    \CommentTok{// bỏ qua lỗi 23505 (đã tồn tại) — không crash}
+\NormalTok{  \}}
+  \ControlFlowTok{return} \FunctionTok{getBadgesWithStatus}\NormalTok{(userId)}\OperatorTok{;}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Luồng:}
+
+\begin{verbatim}
+1. Tải song song: danh mục badge + stats user + badge đã đạt
+2. earnedIds = Set các badge_id đã có trong user_badges
+3. toAward = badge chưa có VÀ isBadgeEarned() = true
+4. INSERT toAward vào user_badges
+5. Trả getBadgesWithStatus() — danh sách đầy đủ kèm earned/earned_at
+\end{verbatim}
+
+\textbf{Tại sao bỏ qua lỗi \texttt{23505}?} Hai lần gọi
+\texttt{syncUserBadges} liên tiếp có thể cố insert cùng badge → unique
+constraint vi phạm → bỏ qua an toàn.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.9. \texttt{getNotifications()} ---
+lazy-load an toàn Expo
+Go}{10.9. getNotifications() --- lazy-load an toàn Expo Go}}\label{getnotifications-lazy-load-an-touxe0n-expo-go}
+
+\textbf{Mục đích:} Chỉ load \texttt{expo-notifications} khi
+\textbf{không} chạy trên Expo Go.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{const}\NormalTok{ isExpoGo }\OperatorTok{=}\NormalTok{ Constants}\OperatorTok{.}\AttributeTok{executionEnvironment} \OperatorTok{===}\NormalTok{ ExecutionEnvironment}\OperatorTok{.}\AttributeTok{StoreClient}\OperatorTok{;}
+
+\KeywordTok{async} \KeywordTok{function} \FunctionTok{getNotifications}\NormalTok{()}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\NormalTok{NotificationsModule }\OperatorTok{|} \DataTypeTok{null}\OperatorTok{\textgreater{}}\NormalTok{ \{}
+  \ControlFlowTok{if}\NormalTok{ (isExpoGo) }\ControlFlowTok{return} \KeywordTok{null}\OperatorTok{;}  \CommentTok{// Expo Go → không dùng notification}
+
+  \ControlFlowTok{if}\NormalTok{ (notificationsModule }\OperatorTok{===} \KeywordTok{undefined}\NormalTok{) \{}
+    \ControlFlowTok{try}\NormalTok{ \{}
+\NormalTok{      notificationsModule }\OperatorTok{=} \ControlFlowTok{await} \ImportTok{import}\NormalTok{(}\StringTok{\textquotesingle{}expo{-}notifications\textquotesingle{}}\NormalTok{)}\OperatorTok{;}  \CommentTok{// import động, lần đầu}
+\NormalTok{      notificationsModule}\OperatorTok{.}\FunctionTok{setNotificationHandler}\NormalTok{(\{ }\CommentTok{/* hiện alert + âm thanh */}\NormalTok{ \})}\OperatorTok{;}
+\NormalTok{    \} }\ControlFlowTok{catch}\NormalTok{ \{}
+\NormalTok{      notificationsModule }\OperatorTok{=} \KeywordTok{null}\OperatorTok{;}
+\NormalTok{    \}}
+\NormalTok{  \}}
+  \ControlFlowTok{return}\NormalTok{ notificationsModule}\OperatorTok{;}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Pattern lazy-load:} - \texttt{undefined} = chưa thử load. -
+\texttt{null} = đã thử, không dùng được (Expo Go hoặc lỗi). -
+\texttt{NotificationsModule} = đã load thành công, cache lại.
+
+→ Mọi hàm notification gọi \texttt{getNotifications()} trước; nếu
+\texttt{null} → return sớm, \textbf{không crash}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.10.
+\texttt{updateNotificationPreferences(userId,\ prefs)} --- bật/tắt
+nhắc}{10.10. updateNotificationPreferences(userId, prefs) --- bật/tắt nhắc}}\label{updatenotificationpreferencesuserid-prefs-bux1eadttux1eaft-nhux1eafc}
+
+\textbf{Mục đích:} Cập nhật cài đặt nhắc nhở --- vừa lập lịch trên máy,
+vừa ghi cờ lên server.
+
+\textbf{Luồng xử lý:}
+
+\begin{verbatim}
+1. Đọc prefs hiện tại: getNotificationPreferences(userId)
+2. Merge: next = { ...current, ...prefs }
+
+3. Nếu bật nhắc nước (true):
+     → enableWaterReminders() — xin quyền + lập 8 thông báo lặp ngày
+   Nếu tắt (false):
+     → disableWaterReminders() — hủy tất cả id đã lưu trong AsyncStorage
+
+4. Nếu bật nhắc tập (true):
+     → requestPermissions() — xin quyền OS
+     → (Android) tạo notification channel
+     → scheduleWorkoutReminder(wakeup_time) — lập lịch CALENDAR lặp ngày
+   Nếu tắt → cancelWorkoutReminder()
+   Nếu đổi giờ khi đang bật → scheduleWorkoutReminder(giờ mới)
+
+5. Ghi 4 cờ lên profiles (Supabase)
+6. Trả next prefs
+\end{verbatim}
+
+\textbf{\texttt{scheduleWorkoutReminder(wakeupTime)} chi tiết:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ControlFlowTok{await} \FunctionTok{cancelWorkoutReminder}\NormalTok{()}\OperatorTok{;}           \CommentTok{// hủy lịch cũ (tránh trùng)}
+\KeywordTok{const}\NormalTok{ \{ hour}\OperatorTok{,}\NormalTok{ minute \} }\OperatorTok{=} \FunctionTok{parseWakeupTime}\NormalTok{(wakeupTime)}\OperatorTok{;}  \CommentTok{// "06:30" → \{6, 30\}}
+\KeywordTok{const}\NormalTok{ id }\OperatorTok{=} \ControlFlowTok{await}\NormalTok{ Notifications}\OperatorTok{.}\FunctionTok{scheduleNotificationAsync}\NormalTok{(\{}
+\NormalTok{  content}\OperatorTok{:}\NormalTok{ \{ title}\OperatorTok{:} \StringTok{\textquotesingle{}Giờ tập luyện 💪\textquotesingle{}}\OperatorTok{,}\NormalTok{ body}\OperatorTok{:} \StringTok{\textquotesingle{}...\textquotesingle{}}\OperatorTok{,}\NormalTok{ sound}\OperatorTok{:} \KeywordTok{true}\NormalTok{ \}}\OperatorTok{,}
+\NormalTok{  trigger}\OperatorTok{:}\NormalTok{ \{ type}\OperatorTok{:}\NormalTok{ CALENDAR}\OperatorTok{,}\NormalTok{ hour}\OperatorTok{,}\NormalTok{ minute}\OperatorTok{,}\NormalTok{ repeats}\OperatorTok{:} \KeywordTok{true}\NormalTok{ \}}\OperatorTok{,}  \CommentTok{// lặp mỗi ngày}
+\NormalTok{\})}\OperatorTok{;}
+\ControlFlowTok{await}\NormalTok{ AsyncStorage}\OperatorTok{.}\FunctionTok{setItem}\NormalTok{(WORKOUT\_REMINDER\_ID\_KEY}\OperatorTok{,}\NormalTok{ id)}\OperatorTok{;}  \CommentTok{// lưu id để hủy sau}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.11.
+\texttt{syncAllRemindersOnLaunch(userId)} --- khôi phục khi mở
+app}{10.11. syncAllRemindersOnLaunch(userId) --- khôi phục khi mở app}}\label{syncallremindersonlaunchuserid-khuxf4i-phux1ee5c-khi-mux1edf-app}
+
+\textbf{Gọi từ:} \texttt{App.tsx} sau khi xác nhận user đã onboarding.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{export} \KeywordTok{async} \KeywordTok{function} \FunctionTok{syncAllRemindersOnLaunch}\NormalTok{(userId}\OperatorTok{:} \DataTypeTok{string}\NormalTok{)}\OperatorTok{:} \BuiltInTok{Promise}\OperatorTok{\textless{}}\DataTypeTok{void}\OperatorTok{\textgreater{}}\NormalTok{ \{}
+  \ControlFlowTok{if}\NormalTok{ (isExpoGo) }\ControlFlowTok{return}\OperatorTok{;}
+
+  \ControlFlowTok{await} \FunctionTok{syncWaterRemindersOnLaunch}\NormalTok{(userId)}\OperatorTok{;}   \CommentTok{// đọc cờ water → đặt lại 8 mốc nếu bật}
+
+  \KeywordTok{const}\NormalTok{ prefs }\OperatorTok{=} \ControlFlowTok{await} \FunctionTok{getNotificationPreferences}\NormalTok{(userId)}\OperatorTok{;}
+  \ControlFlowTok{if}\NormalTok{ (prefs}\OperatorTok{.}\AttributeTok{workout\_reminder\_enabled}\NormalTok{) \{}
+    \KeywordTok{const}\NormalTok{ granted }\OperatorTok{=} \ControlFlowTok{await} \FunctionTok{requestPermissions}\NormalTok{()}\OperatorTok{;}
+    \ControlFlowTok{if}\NormalTok{ (granted) }\ControlFlowTok{await} \FunctionTok{scheduleWorkoutReminder}\NormalTok{(prefs}\OperatorTok{.}\AttributeTok{wakeup\_time}\NormalTok{)}\OperatorTok{;}
+\NormalTok{  \}}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Tại sao cần?} User cài lại app / xóa cache → id thông báo trong
+AsyncStorage mất → cần đặt lại lịch dựa trên cờ đã lưu trên server
+(\texttt{profiles}).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{\texorpdfstring{10.12. RPC
+\texttt{get\_dashboard\_summary()} --- SQL trên
+server}{10.12. RPC get\_dashboard\_summary() --- SQL trên server}}\label{rpc-get_dashboard_summary-sql-truxean-server}
+
+\textbf{Phần quan trọng nhất --- snapshot 7 ngày:}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{from}\NormalTok{ generate\_series(v\_today }\OperatorTok{{-}} \DecValTok{6}\NormalTok{, v\_today, }\DataTypeTok{interval} \StringTok{\textquotesingle{}1 day\textquotesingle{}}\NormalTok{) }\KeywordTok{as} \DataTypeTok{day}
+\KeywordTok{left} \KeywordTok{join}\NormalTok{ lateral (}
+  \KeywordTok{select} \FunctionTok{count}\NormalTok{(}\OperatorTok{*}\NormalTok{):}\CharTok{:int} \KeywordTok{as} \FunctionTok{count}\NormalTok{, }\FunctionTok{coalesce}\NormalTok{(}\FunctionTok{sum}\NormalTok{(total\_calories),}\DecValTok{0}\NormalTok{) }\KeywordTok{as}\NormalTok{ calories}
+  \KeywordTok{from} \KeywordTok{public}\NormalTok{.workout\_sessions}
+  \KeywordTok{where}\NormalTok{ user\_id }\OperatorTok{=}\NormalTok{ v\_user\_id }\KeywordTok{and}\NormalTok{ workout\_date }\OperatorTok{=} \DataTypeTok{day}\NormalTok{:}\CharTok{:date}
+\NormalTok{) ws }\KeywordTok{on} \KeywordTok{true}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{Giải thích:} - \texttt{generate\_series} tạo \textbf{7 ngày liên
+tiếp} (hôm nay - 6 → hôm nay). - \texttt{LEFT\ JOIN\ LATERAL} với
+subquery đếm session theo từng ngày. - Ngày \textbf{không có buổi tập}
+vẫn xuất hiện với \texttt{workouts\ =\ 0},
+\texttt{calories\_burned\ =\ 0}. - Không dùng \texttt{INNER\ JOIN} ---
+nếu dùng INNER JOIN, ngày không tập sẽ \textbf{biến mất} khỏi kết quả.
+
+\textbf{Bảo mật:} - \texttt{v\_user\_id\ :=\ (select\ auth.uid())} ---
+chỉ lấy data của user đang đăng nhập. - \texttt{SECURITY\ INVOKER} ---
+chạy với quyền user, RLS vẫn áp dụng. -
+\texttt{if\ v\_user\_id\ is\ null\ then\ raise\ exception} --- từ chối
+nếu chưa đăng nhập.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{10.13. Bảng tóm tắt
+hàm}\label{bux1ea3ng-tuxf3m-tux1eaft-huxe0m}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1282}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1538}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1795}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2051}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Hàm
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+File
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Input
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Khi nào gọi
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{getDashboardSummary} & dashboardService & \texttt{userId} &
+\texttt{DashboardSummary} & Mở/refresh Dashboard \\
+\texttt{normalizeWeeklyWorkouts} & dashboardService &
+\texttt{raw:\ unknown} & \texttt{WeeklyWorkoutDay{[}7{]}} & Sau RPC,
+trước render chart \\
+\texttt{loadDashboard} & DashboardScreen & --- & cập nhật state & Mount,
+refresh, refreshKey đổi \\
+\texttt{isBadgeEarned} & badgeCalculations & \texttt{badge},
+\texttt{stats} & \texttt{boolean} & Kiểm tra từng huy hiệu \\
+\texttt{syncUserBadges} & badgeService & \texttt{userId} &
+\texttt{BadgeWithStatus{[}{]}} & Mỗi lần load Dashboard \\
+\texttt{getNotificationPreferences} & notificationService &
+\texttt{userId} & \texttt{NotificationPreferences} & Mở modal cài đặt \\
+\texttt{updateNotificationPreferences} & notificationService &
+\texttt{userId}, \texttt{prefs} & \texttt{NotificationPreferences} &
+User bật/tắt nhắc \\
+\texttt{syncAllRemindersOnLaunch} & notificationService &
+\texttt{userId} & \texttt{void} & Sau login + onboarding \\
+\texttt{notifyBadgeEarned} & notificationService & \texttt{title},
+\texttt{body} & \texttt{void} & Badge mới đạt \\
+\texttt{get\_dashboard\_summary} & SQL RPC & (JWT tự động) &
+\texttt{jsonb} & Client gọi qua supabase.rpc \\
+\end{longtable}
+}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\emph{Tài liệu giải thích module Dashboard, Notification \& Badges ---
+FitLife. Phiên bản dễ hiểu + giải thích code cho nghiệm thu và báo cáo
+nhóm.}
+
+\end{document}

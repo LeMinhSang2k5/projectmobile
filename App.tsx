@@ -101,6 +101,7 @@ export default function App() {
       setIsAdmin(data?.role === 'admin');
       setOnboardingComplete(data?.onboarding_completed === true);
       if (data?.onboarding_completed) {
+        // Khôi phục lịch nhắc nước/tập từ cờ profiles sau login (bỏ qua trên Expo Go)
         syncAllRemindersOnLaunch(session.user.id).catch(console.error);
       }
     };

@@ -1,3 +1,8 @@
+/**
+ * Biểu đồ cột hoạt động 7 ngày trên Dashboard.
+ * Input: summary.weekly_workouts (đã chuẩn hóa). Empty state khi chưa có buổi tập nào.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 3.3, 10.5
+ */
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -29,6 +34,7 @@ function buildFallbackDays(): WeeklyWorkoutDay[] {
 
 export default function WeeklyProgressChart({ days }: Props) {
   const today = toLocalDateString();
+  // Luôn đủ 7 ngày; fallback nếu input sai độ dài
   const chartDays = useMemo(
     () => (days.length === 7 ? days : buildFallbackDays()),
     [days],
@@ -36,6 +42,7 @@ export default function WeeklyProgressChart({ days }: Props) {
 
   const totalWorkouts = chartDays.reduce((sum, day) => sum + day.workouts, 0);
   const totalCalories = chartDays.reduce((sum, day) => sum + day.calories_burned, 0);
+  // Tối thiểu 1 để tránh chia cho 0 khi tính chiều cao cột
   const maxWorkouts = Math.max(...chartDays.map((day) => day.workouts), 1);
   const hasActivity = totalWorkouts > 0;
 
@@ -67,6 +74,7 @@ export default function WeeklyProgressChart({ days }: Props) {
         {chartDays.map((day) => {
           const isToday = normalizeDateString(day.date) === today;
           const active = day.workouts > 0;
+          // Ngày có tập: cột tỉ lệ workouts/maxWorkouts (tối thiểu 12px). Không tập: chấm nhỏ.
           const fillHeight = active
             ? Math.max(12, (day.workouts / maxWorkouts) * CHART_HEIGHT)
             : 0;

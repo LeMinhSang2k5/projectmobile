@@ -1,37 +1,23 @@
+/**
+ * Service Dashboard — Tầng 2 (nghiệp vụ).
+ * Lấy số liệu tổng quan tab Home: streak, calo, buổi tập, biểu đồ 7 ngày, cờ nhắc nhở.
+ * Ưu tiên RPC `get_dashboard_summary()`; nếu lỗi thì fallback đọc từng bảng trên client.
+ */
 import { supabase } from '../../utils/supabase';
 import { getProfile } from './healthService';
 import { getDailyNutrition } from './nutritionService';
 import { getTodayWater } from './waterService';
 import { localDateDaysAgo, normalizeDateString, toLocalDateString } from '../lib/dateUtils';
+import { buildEmptyWeekly, normalizeWeeklyWorkouts } from '../lib/weeklyWorkoutUtils';
 import type { DashboardSummary, WeeklyWorkoutDay } from '../types';
 
-const EMPTY_WEEKLY = (): WeeklyWorkoutDay[] =>
-  Array.from({ length: 7 }, (_, index) => ({
-    date: localDateDaysAgo(6 - index),
-    workouts: 0,
-    calories_burned: 0,
-  }));
+export { normalizeWeeklyWorkouts };
 
-export function normalizeWeeklyWorkouts(raw: unknown): WeeklyWorkoutDay[] {
-  const base = EMPTY_WEEKLY();
-  if (!Array.isArray(raw) || raw.length === 0) return base;
-
-  const map = new Map(base.map((day) => [day.date, { ...day }]));
-  for (const item of raw) {
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const date = normalizeDateString(String(row.date ?? ''));
-    if (!map.has(date)) continue;
-    map.set(date, {
-      date,
-      workouts: Number(row.workouts ?? 0),
-      calories_burned: Number(row.calories_burned ?? 0),
-    });
-  }
-
-  return base.map((day) => map.get(day.date) ?? day);
-}
-
+/**
+ * Fallback client khi RPC `get_dashboard_summary` lỗi hoặc chưa có migration.
+ * Gom song song 3 nguồn: profiles, user_streaks, workout_sessions (7 ngày gần nhất).
+ * userId chỉ dùng ở đây — RPC tự lấy user từ JWT qua auth.uid().
+ */
 async function buildDashboardSummaryClient(userId: string): Promise<DashboardSummary> {
   const today = toLocalDateString();
   const weekStart = localDateDaysAgo(6);
@@ -52,7 +38,7 @@ async function buildDashboardSummaryClient(userId: string): Promise<DashboardSum
   ]);
 
   const weeklyMap = new Map<string, WeeklyWorkoutDay>();
-  for (const day of EMPTY_WEEKLY()) {
+  for (const day of buildEmptyWeekly()) {
     weeklyMap.set(day.date, { ...day });
   }
 
@@ -83,6 +69,10 @@ async function buildDashboardSummaryClient(userId: string): Promise<DashboardSum
   };
 }
 
+/**
+ * Lấy toàn bộ số liệu Dashboard trong một lần gọi.
+ * Sau RPC, chuẩn hóa weekly_workouts để biểu đồ luôn có đủ 7 ngày theo timezone thiết bị.
+ */
 export async function getDashboardSummary(userId: string): Promise<DashboardSummary> {
   const { data, error } = await supabase.rpc('get_dashboard_summary');
   if (!error && data) {
@@ -96,6 +86,7 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
   return buildDashboardSummaryClient(userId);
 }
 
+/** Snapshot dinh dưỡng + nước hôm nay (dùng cho StatsGrid / thẻ sức khỏe). */
 export async function getTodayNutritionSnapshot(userId: string) {
   const today = toLocalDateString();
   const profile = await getProfile(userId);

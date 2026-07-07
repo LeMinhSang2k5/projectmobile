@@ -1,3 +1,8 @@
+/**
+ * Danh mục huy hiệu fallback khi không tải được bảng `badges` từ Supabase.
+ * Chỉ có 4 badge đầu; migration chính seed đủ 8 badge.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 4.5
+ */
 import type { Badge } from '../types';
 
 export const FALLBACK_BADGES: Badge[] = [

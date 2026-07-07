@@ -1,0 +1,31 @@
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[uml/start] (start) {};
+  \node[uml/activity, below=of start] (toggle) {Bật nhắc tập luyện};
+  \node[uml/decision, below=of toggle] (expo) {Expo Go?};
+  \node[uml/activity, left=2.1cm of expo] (block) {Báo lỗi:\\cần dev build};
+  \node[uml/final, below=of block] (endblock) {};
+  \node[uml/finalinner] at (endblock) {};
+  \node[uml/activity, below=of expo] (perm) {Xin quyền OS};
+  \node[uml/decision, below=of perm] (granted) {Được cấp\\quyền?};
+  \node[uml/activity, right=1.6cm of granted] (err) {Báo lỗi};
+  \node[uml/final, below=of err] (enderr) {};
+  \node[uml/finalinner] at (enderr) {};
+  \node[uml/activity, below=of granted] (channel) {Tạo channel Android\\+ lập lịch CALENDAR};
+  \node[uml/activity, below=of channel] (save) {Lưu id AsyncStorage\\+ ghi profiles};
+  \node[uml/activity, below=of save] (push) {Push hàng ngày\\đúng wakeup\_time};
+  \node[uml/final, below=of push] (end) {};
+  \node[uml/finalinner] at (end) {};
+
+  \draw[uml/flow] (start) -- (toggle);
+  \draw[uml/flow] (toggle) -- (expo);
+  \draw[uml/flow] (expo.west) -| node[uml/flowlabel, above] {Có} (block.north);
+  \draw[uml/flow] (block) -- (endblock);
+  \draw[uml/flow] (expo) -- node[uml/flowlabel, right] {Không} (perm);
+  \draw[uml/flow] (perm) -- (granted);
+  \draw[uml/flow] (granted) -- node[uml/flowlabel, above] {Không} (err);
+  \draw[uml/flow] (err) -- (enderr);
+  \draw[uml/flow] (granted) -- node[uml/flowlabel, left] {Có} (channel);
+  \draw[uml/flow] (channel) -- (save);
+  \draw[uml/flow] (save) -- (push);
+  \draw[uml/flow] (push) -- (end);
+\end{tikzpicture}

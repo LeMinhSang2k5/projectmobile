@@ -1,0 +1,26 @@
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[uml/start] (start) {};
+  \node[uml/activity, below=of start] (done) {Hoàn thành buổi tập\\WorkoutDetailScreen};
+  \node[uml/activity, below=of done] (db) {Ghi workout\_session\\+ cập nhật streak};
+  \node[uml/activity, below=of db] (key) {dashboardRefreshKey++};
+  \node[uml/activity, below=of key] (reload) {loadDashboard lại};
+  \node[uml/activity, below=of reload] (rpc) {RPC: calo \& biểu đồ\\7 ngày cập nhật};
+  \node[uml/decision, below=of rpc] (badgeq) {Đủ điều kiện\\huy hiệu?};
+  \node[uml/activity, right=1.7cm of badgeq] (award) {INSERT user\_badges};
+  \node[uml/activity, below=of award] (notify) {notifyBadgeEarned\\(nếu bật)};
+  \node[uml/activity, below=of badgeq] (ui) {Cập nhật UI Dashboard};
+  \node[uml/final, below=of ui] (end) {};
+  \node[uml/finalinner] at (end) {};
+
+  \draw[uml/flow] (start) -- (done);
+  \draw[uml/flow] (done) -- (db);
+  \draw[uml/flow] (db) -- (key);
+  \draw[uml/flow] (key) -- (reload);
+  \draw[uml/flow] (reload) -- (rpc);
+  \draw[uml/flow] (rpc) -- (badgeq);
+  \draw[uml/flow] (badgeq) -- node[uml/flowlabel, above] {Có} (award.west);
+  \draw[uml/flow] (award) -- (notify);
+  \draw[uml/flow] (notify.south) |- (ui.east);
+  \draw[uml/flow] (badgeq) -- node[uml/flowlabel, left] {Không} (ui);
+  \draw[uml/flow] (ui) -- (end);
+\end{tikzpicture}

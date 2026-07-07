@@ -1,3 +1,8 @@
+/**
+ * Modal cài đặt thông báo — bật/tắt nhắc nước, nhắc tập (+ chọn giờ), thông báo huy hiệu.
+ * Mở từ nút chuông Dashboard hoặc menu 3 gạch > Thông báo.
+ * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5.2, 5.4
+ */
 import React, { useEffect, useState } from 'react';
 import {
   View,

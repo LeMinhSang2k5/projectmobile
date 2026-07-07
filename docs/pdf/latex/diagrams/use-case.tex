@@ -1,0 +1,38 @@
+\begin{tikzpicture}[node distance=0.55cm and 0.9cm]
+  % Use cases — 2 columns inside system boundary
+  \node[uml/usecase] (uc1) at (2.2, 0.8) {UC1: Xem tổng quan\\Dashboard};
+  \node[uml/usecase, below=of uc1] (uc2) {UC2: Xem biểu đồ\\7 ngày};
+  \node[uml/usecase, below=of uc2] (uc3) {UC3: Làm mới\\dữ liệu};
+  \node[uml/usecase, below=of uc3] (uc4) {UC4: Xem\\huy hiệu};
+  \node[uml/usecase, below=of uc4] (uc5) {UC5: Cấp huy hiệu\\tự động};
+
+  \node[uml/usecase, right=3.8cm of uc1] (uc6) {UC6: Cài đặt\\nhắc uống nước};
+  \node[uml/usecase, below=of uc6] (uc7) {UC7: Cài đặt\\nhắc tập luyện};
+  \node[uml/usecase, below=of uc7] (uc8) {UC8: Chọn giờ\\nhắc tập};
+  \node[uml/usecase, below=of uc8] (uc9) {UC9: Thông báo\\huy hiệu mới};
+  \node[uml/usecase, below=of uc9] (uc10) {UC10: Nhận thông báo\\nhắc (push)};
+
+  % System boundary
+  \node[uml/boundary, fit=(uc1)(uc10), label={[font=\small\bfseries]above:Module Dashboard, Notification \& Badges}] {};
+
+  % Actors
+  \umlActor{-3.2}{-2.2}{Người dùng}
+  \umlActor{10.8}{-5.8}{Hệ điều hành\\iOS / Android}
+
+  % Associations
+  \draw[uml/assoc] (-2.55,-2.2) -- (uc1.west);
+  \draw[uml/assoc] (-2.55,-2.35) -- (uc3.west);
+  \draw[uml/assoc] (-2.55,-2.5) -- (uc6.west);
+  \draw[uml/assoc] (-2.55,-2.65) -- (uc7.west);
+  \draw[uml/assoc] (-2.55,-2.8) -- (uc9.west);
+  \draw[uml/assoc] (10.15,-5.8) -- (uc10.east);
+
+  % Include / extend
+  \draw[uml/include] (uc1.south east) to[bend left=15] node[uml/flowlabel, right] {<<include>>} (uc2.north);
+  \draw[uml/include] (uc1.east) -- node[uml/flowlabel, above] {<<include>>} (uc4.north west);
+  \draw[uml/include] (uc1.south) -- node[uml/flowlabel, left] {<<include>>} (uc5.north);
+  \draw[uml/extend] (uc5.east) to[bend left=20] node[uml/flowlabel, above] {<<extend>>} (uc9.west);
+  \draw[uml/include] (uc7.south) -- node[uml/flowlabel, left] {<<include>>} (uc8.north);
+  \draw[uml/include] (uc6.south east) to[bend left=25] node[uml/flowlabel, right] {<<include>>} (uc10.north west);
+  \draw[uml/include] (uc7.south east) to[bend left=15] node[uml/flowlabel, right] {<<include>>} (uc10.west);
+\end{tikzpicture}

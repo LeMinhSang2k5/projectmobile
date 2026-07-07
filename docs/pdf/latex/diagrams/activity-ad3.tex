@@ -1,0 +1,29 @@
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[uml/start] (start) {};
+  \node[uml/activity, below=of start] (toggle) {Bật nhắc uống nước\\trong Modal};
+  \node[uml/decision, below=of toggle] (expo) {Expo Go?};
+  \node[uml/activity, below left=1.1cm and 1.2cm of expo] (inapp) {startInAppWaterReminders};
+  \node[uml/activity, below right=1.1cm and 1.2cm of expo] (perm) {Xin quyền OS};
+  \node[uml/decision, below=of perm] (granted) {Được cấp\\quyền?};
+  \node[uml/activity, right=1.6cm of granted] (err) {Báo lỗi};
+  \node[uml/final, below=of err] (enderr) {};
+  \node[uml/finalinner] at (enderr) {};
+  \node[uml/activity, below=of granted] (sched) {Lập 8 lịch CALENDAR\\7h–21h};
+  \node[uml/activity, below=1.4cm of inapp] (save) {Ghi water\_reminder\_enabled\\vào profiles};
+  \node[uml/activity, below=of save] (deliver) {Expo Go: Alert trong app\\Dev build: push OS};
+  \node[uml/final, below=of deliver] (end) {};
+  \node[uml/finalinner] at (end) {};
+
+  \draw[uml/flow] (start) -- (toggle);
+  \draw[uml/flow] (toggle) -- (expo);
+  \draw[uml/flow] (expo.west) -| node[uml/flowlabel, above left] {Có} (inapp.north);
+  \draw[uml/flow] (expo.east) -| node[uml/flowlabel, above right] {Không} (perm.north);
+  \draw[uml/flow] (perm) -- (granted);
+  \draw[uml/flow] (granted) -- node[uml/flowlabel, left] {Không} (err);
+  \draw[uml/flow] (err) -- (enderr);
+  \draw[uml/flow] (granted) -- node[uml/flowlabel, left] {Có} (sched);
+  \draw[uml/flow] (inapp.south) |- (save.west);
+  \draw[uml/flow] (sched.south) |- (save.east);
+  \draw[uml/flow] (save) -- (deliver);
+  \draw[uml/flow] (deliver) -- (end);
+\end{tikzpicture}

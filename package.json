@@ -34,18 +34,20 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "test:formulas": "node --import tsx src/lib/healthCalculations.test.ts",
     "test:workout": "node --import tsx src/lib/__tests__/workoutService.test.ts",
     "test:badges": "node --import tsx src/lib/__tests__/badgeLogic.test.ts",
-    "test": "npm run test:formulas && npm run test:workout && npm run test:badges",
+    "test:weekly": "node --import tsx src/lib/__tests__/weeklyWorkoutUtils.test.ts",
+    "test": "npm run test:formulas && npm run test:workout && npm run test:badges && npm run test:weekly",
     "typecheck": "tsc --noEmit",
     "check:supabase": "node scripts/check-supabase.mjs",
     "test:cms": "node scripts/test-cms-rls.mjs",
     "test:security": "node scripts/test-security.mjs",
     "test:cms-all": "npm run test:cms && npm run test:security"
   },
-  "private": true
+  "private": true,
+  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
 }

@@ -1,3 +1,4 @@
+/** Unit test logic huy hiệu — isBadgeEarned (streak đạt/chưa đạt mốc 3). @see mục 8.1 đặc tả */
 import assert from 'node:assert/strict';
 import { isBadgeEarned } from '../badgeCalculations';
 import type { Badge } from '../../types';
