@@ -687,19 +687,7 @@ export default function ProfileScreen({
             )}
             <Text style={styles.privacyBtnText}>Xuất dữ liệu của tôi</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteAccountBtn}
-            onPress={handleDeleteAccount}
-            disabled={exportingData || deletingAccount}
-            activeOpacity={0.8}
-          >
-            {deletingAccount ? (
-              <ActivityIndicator size="small" color="#ff6b6b" />
-            ) : (
-              <MaterialIcons name="delete-forever" size={18} color="#ff6b6b" />
-            )}
-            <Text style={styles.deleteAccountText}>Xóa tài khoản</Text>
-          </TouchableOpacity>
+
         </View>
 
         {/* ─── Sign Out ─── */}

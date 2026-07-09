@@ -12,6 +12,7 @@ import { useFonts } from 'expo-font';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Montserrat_700Bold, Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat';
 import type { Session } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 
 import Header from './src/components/Header';
 import AppMenuDrawer from './src/components/AppMenuDrawer';
@@ -25,6 +26,7 @@ import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AdminScreen from './src/screens/admin/AdminScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import { colors } from './src/theme/colors';
 import { supabase } from './utils/supabase';
 import { syncAllRemindersOnLaunch } from './src/services/notificationService';
@@ -48,6 +50,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminVisible, setAdminVisible] = useState(false);
   const [isBottomNavHidden, setBottomNavHidden] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,9 +60,15 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowResetPassword(true);
+      }
+
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         setOnboardingComplete(null);
         setSchemaIssue(null);
+        setAccountStateVersion(v => v + 1); // Kích hoạt useEffect load lại profile
       }
       if (!session) {
         setAvatarUrl(null);
@@ -70,7 +79,43 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Bắt link deep link khi ứng dụng mở từ email
+    const handleDeepLink = async (event: { url: string | null }) => {
+      if (!event.url) return;
+      console.log('Deep link received:', event.url);
+      
+      // Nếu là link đổi mật khẩu (có chứa type=recovery)
+      if (event.url.includes('type=recovery')) {
+        // Tách access_token và refresh_token từ URL
+        const params = event.url.split('#')[1] || event.url.split('?')[1];
+        if (params) {
+          const urlParams = new URLSearchParams(params);
+          const accessToken = urlParams.get('access_token');
+          const refreshToken = urlParams.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            // Chủ động nạp session vào Supabase
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (!error) {
+              // Bật màn hình đổi mật khẩu
+              setShowResetPassword(true);
+            }
+          }
+        }
+      }
+    };
+
+    const linkingSub = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then(url => handleDeepLink({ url }));
+
+    return () => {
+      subscription.unsubscribe();
+      linkingSub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -292,8 +337,12 @@ export default function App() {
               />
             </>
           ) : null}
-        </SafeAreaView>
+          </SafeAreaView>
         </BottomNavContext.Provider>
+      )}
+
+      {showResetPassword && (
+        <ResetPasswordScreen onClose={() => setShowResetPassword(false)} />
       )}
     </SafeAreaProvider>
   );

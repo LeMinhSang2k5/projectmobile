@@ -18,6 +18,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme/colors';
 import { supabase } from '../../utils/supabase';
+import ForgotPasswordScreen from './ForgotPasswordScreen';
 
 // ─────────────────────────────────────────────
 // Background tĩnh - KHÔNG BAO GIỜ re-render
@@ -140,6 +141,7 @@ const PasswordInput = memo(({ label = 'Mật khẩu', value, onChangeText, onSub
 // ─────────────────────────────────────────────
 export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -239,6 +241,10 @@ export default function LoginScreen() {
   const handleConfirmPasswordFocus = useCallback(() => setConfirmPasswordFocused(true), []);
   const handleConfirmPasswordBlur = useCallback(() => setConfirmPasswordFocused(false), []);
 
+  if (isForgotPassword) {
+    return <ForgotPasswordScreen onBackToLogin={() => setIsForgotPassword(false)} />;
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -308,7 +314,7 @@ export default function LoginScreen() {
             )}
 
             {!isSignUp && (
-              <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword} disabled={loading}>
+              <TouchableOpacity style={styles.forgotPassword} onPress={() => setIsForgotPassword(true)} disabled={loading}>
                 <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
               </TouchableOpacity>
             )}
