@@ -9,10 +9,6 @@ export type DayPlan = {
   suggestedProgramId?: string;
 };
 
-/**
- * Tiện ích chuẩn hóa dữ liệu biểu đồ 7 ngày.
- * Server RPC dùng current_date (timezone DB); client tạo khung 7 ngày theo timezone máy.
- */
 export function buildEmptyWeekly(): WeeklyWorkoutDay[] {
   return Array.from({ length: 7 }, (_, index) => ({
     date: localDateDaysAgo(6 - index),
@@ -21,10 +17,6 @@ export function buildEmptyWeekly(): WeeklyWorkoutDay[] {
   }));
 }
 
-/**
- * Đảm bảo biểu đồ luôn nhận đúng 7 ngày, kể cả khi server trả thiếu hoặc date kèm timestamp.
- * Merge dữ liệu RPC vào khung 7 ngày local; ngày ngoài phạm vi bị bỏ qua.
- */
 export function normalizeWeeklyWorkouts(raw: unknown): WeeklyWorkoutDay[] {
   const base = buildEmptyWeekly();
   if (!Array.isArray(raw) || raw.length === 0) return base;
@@ -46,8 +38,8 @@ export function normalizeWeeklyWorkouts(raw: unknown): WeeklyWorkoutDay[] {
 }
 
 /**
- * Tạo lịch tập 7 ngày dựa trên mục tiêu sức khỏe và BMI.
- * Quy tắc: 5 ngày tập, 2 ngày nghỉ (Thứ 4 và Chủ Nhật).
+ * Lịch nghỉ mới: Thứ 3 và Thứ 7.
+ * T2(Nặng) -> T3(Nghỉ) | T4(Vừa) | T5(Vừa) | T6(Nặng) -> T7(Nghỉ) | CN(Nhẹ)
  */
 export function generateWeeklyPlan(
   userGoal: FitnessGoal | null,
@@ -57,8 +49,7 @@ export function generateWeeklyPlan(
 ): DayPlan[] {
   const plan: DayPlan[] = [];
   const startDay = new Date(startDate);
-  // Đưa về đầu tuần (Thứ 2)
-  const dayOfWeek = startDay.getDay(); // 0 (CN) -> 6 (T7)
+  const dayOfWeek = startDay.getDay(); 
   const diff = startDay.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
   const monday = new Date(startDay.setDate(diff));
 
@@ -66,12 +57,12 @@ export function generateWeeklyPlan(
     const currentDate = new Date(monday);
     currentDate.setDate(monday.getDate() + i);
     
-    const dayIndex = currentDate.getDay(); // 0: CN, 1: T2, ..., 6: T7
-    const isRestDay = dayIndex === 0 || dayIndex === 3; // Nghỉ Chủ Nhật và Thứ 4
+    // i=1: Thứ 3, i=5: Thứ 7 (Lịch nghỉ khớp với phản hồi của bạn)
+    const isRestDay = i === 1 || i === 5;
 
     let suggestedId: string | undefined;
     if (!isRestDay) {
-      suggestedId = pickProgramForGoal(userGoal, allPrograms, i, bmi);
+      suggestedId = pickProgramForGoal(userGoal, allPrograms, i, bmi, currentDate);
     }
 
     plan.push({
@@ -88,33 +79,41 @@ export function generateWeeklyPlan(
 function pickProgramForGoal(
   goal: FitnessGoal | null,
   programs: Program[],
-  index: number,
-  bmi: number
+  dayIndex: number, 
+  bmi: number,
+  date: Date
 ): string | undefined {
   if (programs.length === 0) return undefined;
 
+  const isHeavyDay = dayIndex === 0 || dayIndex === 4; // T2 và T6 nặng
   let filtered = programs;
 
-  // Thuật toán chọn bài tập nâng cao dựa trên BMI và Goal
-  if (bmi > 25 || goal === 'lose_weight') {
-    // Ưu tiên HIIT hoặc Cardio để đốt calo
+  if (isHeavyDay) {
     filtered = programs.filter(p => 
+      p.level === 'Advanced' || 
       p.title.toLowerCase().includes('hiit') || 
-      p.title.toLowerCase().includes('cardio') ||
-      p.level === 'Advanced'
-    );
-  } else if (bmi < 18.5 || goal === 'build_muscle') {
-    // Ưu tiên các bài tập sức mạnh
-    filtered = programs.filter(p => 
-      p.title.toLowerCase().includes('sức mạnh') || 
       p.title.toLowerCase().includes('elite') ||
-      p.level === 'Intermediate'
+      p.title.toLowerCase().includes('sức mạnh')
     );
-  } else if (goal === 'flexibility') {
-    filtered = programs.filter(p => p.title.toLowerCase().includes('yoga'));
+  } else if (dayIndex === 6) { // CN
+    filtered = programs.filter(p => 
+      p.title.toLowerCase().includes('yoga') || 
+      p.title.toLowerCase().includes('stretch') ||
+      p.level === 'Beginner'
+    );
+  } else {
+    if (bmi > 25 || goal === 'lose_weight') {
+      filtered = programs.filter(p => p.title.toLowerCase().includes('cardio') || p.level === 'Intermediate');
+    } else if (bmi < 18.5 || goal === 'build_muscle') {
+      filtered = programs.filter(p => p.title.toLowerCase().includes('sức mạnh') || p.level === 'Intermediate');
+    }
   }
 
   if (filtered.length === 0) filtered = programs;
   
-  return filtered[index % filtered.length]?.id;
+  const weekOfYear = Math.floor(date.getTime() / (7 * 24 * 60 * 60 * 1000));
+  const seed = date.getDate() + weekOfYear;
+  const rotationOffset = (dayIndex + seed) % filtered.length;
+  
+  return filtered[rotationOffset]?.id;
 }

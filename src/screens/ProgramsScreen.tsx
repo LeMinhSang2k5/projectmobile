@@ -1,5 +1,5 @@
-// Fixed merge conflicts and typos
-import React, { useState, useEffect, useMemo } from 'react';
+// Final Standardized Module 2: BMI + Diverse Suggestions + Strict Streak + 5 Programs Guarantee
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Dimensions,
   ScrollView,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -19,10 +21,10 @@ import { generateWeeklyPlan, DayPlan } from '../lib/weeklyWorkoutUtils';
 import { useHideOnScroll } from '../hooks/useHideOnScroll';
 import { Program, Profile } from '../types';
 import { supabase } from '../../utils/supabase';
+import { toLocalDateString } from '../lib/dateUtils';
 
 const { width } = Dimensions.get('window');
 
-// --- Horizontal Calendar Component ---
 type CalendarProps = {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
@@ -31,16 +33,15 @@ type CalendarProps = {
 };
 
 const HorizontalCalendar = ({ selectedDate, onDateSelect, weeklyPlan, completedDays }: CalendarProps) => {
+  const todayStr = toLocalDateString();
+
   return (
     <View style={styles.calendarContainer}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.calendarList}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.calendarList}>
         {weeklyPlan.map((day) => {
-          const dateStr = day.date.toISOString().split('T')[0];
-          const isCompleted = completedDays.includes(dateStr);
+          const dateStr = toLocalDateString(day.date);
+          const isFuture = dateStr > todayStr;
+          const isCompleted = !day.isRestDay && !isFuture && completedDays.includes(dateStr);
           const isSelected = day.date.toDateString() === selectedDate.toDateString();
           const isToday = day.date.toDateString() === new Date().toDateString();
           
@@ -50,24 +51,25 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, weeklyPlan, completedD
               style={[
                 styles.dayCard, 
                 isSelected && styles.dayCardActive,
-                !isSelected && isToday && { borderColor: colors.primaryFixed, borderWidth: 1 }
+                !isSelected && isToday && { borderColor: colors.primaryFixed, borderWidth: 2 },
+                day.isRestDay && !isSelected && { backgroundColor: 'rgba(255,255,255,0.03)' }
               ]}
               onPress={() => onDateSelect(day.date)}
-              activeOpacity={0.7}
             >
-              <Text style={[styles.dayName, isSelected && styles.dayTextActive]}>
+              <Text style={[styles.dayName, isSelected && styles.dayTextActive, day.isRestDay && !isSelected && { color: 'rgba(255,255,255,0.3)' }]}>
                 {day.date.toLocaleDateString('vi-VN', { weekday: 'short' })}
               </Text>
-              <Text style={[styles.dayNum, isSelected && styles.dayTextActive]}>
+              <Text style={[styles.dayNum, isSelected && styles.dayTextActive, day.isRestDay && !isSelected && { color: 'rgba(255,255,255,0.3)' }]}>
                 {day.date.getDate()}
               </Text>
+              {day.isRestDay && !isSelected && (
+                <MaterialIcons name="coffee" size={12} color="rgba(255,255,255,0.2)" style={{ marginTop: 2 }} />
+              )}
               {isCompleted && (
                 <View style={styles.checkIcon}>
-                  <MaterialIcons name="check-circle" size={14} color={isSelected ? "#fff" : colors.primaryFixed} />
+                  <MaterialIcons name="check-circle" size={16} color={isSelected ? "#fff" : colors.primaryFixed} />
                 </View>
               )}
-              {day.isRestDay && !isCompleted && <View style={[styles.restDot, isSelected && { backgroundColor: '#fff' }]} />}
-              {isToday && !isSelected && !isCompleted && <View style={[styles.todayDot, { backgroundColor: colors.primaryFixed }]} />}
             </TouchableOpacity>
           );
         })}
@@ -77,24 +79,22 @@ const HorizontalCalendar = ({ selectedDate, onDateSelect, weeklyPlan, completedD
 };
 
 type Props = {
-  onSelectProgram: (id: string) => void;
+  onSelectProgram: (id: string, date: Date) => void;
+  refreshKey?: number;
 };
 
-export default function ProgramsScreen({ onSelectProgram }: Props) {
+export default function ProgramsScreen({ onSelectProgram, refreshKey }: Props) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [completedDays, setCompletedDays] = useState<string[]>([]);
-  const [streak, setStreak] = useState(0);
+  const [dbStreak, setDbStreak] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const handleScroll = useHideOnScroll();
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  const loadInitialData = async () => {
-    setLoading(true);
+  const loadInitialData = async (isRefreshing = false) => {
+    if (!isRefreshing && programs.length === 0) setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -102,195 +102,219 @@ export default function ProgramsScreen({ onSelectProgram }: Props) {
           fetchPrograms(),
           getProfile(user.id).catch(() => null),
           getWorkoutHistory(user.id),
-          getUserStreak(user.id)
+          getUserStreak(user.id),
         ]);
+        
         setPrograms(progData);
         setProfile(profileData);
-        setCompletedDays(history);
-        setStreak(streakVal);
-      } else {
-        const progData = await fetchPrograms();
-        setPrograms(progData);
+        setCompletedDays(history || []);
+        setDbStreak(streakVal);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Fetch error:', e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    loadInitialData();
+  }, [refreshKey]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadInitialData(true);
+  }, [refreshKey]);
+
+  const bmiInfo = useMemo(() => {
+    const bmi = profile?.bmi || 0;
+    if (bmi === 0) return { label: 'Chưa có dữ liệu', color: colors.onSurfaceVariant };
+    if (bmi < 18.5) return { label: 'Cân nặng thấp', color: '#64b5f6' };
+    if (bmi < 25) return { label: 'Bình thường', color: '#4ade80' };
+    if (bmi < 30) return { label: 'Tiền béo phì', color: '#ffb74d' };
+    return { label: 'Béo phì', color: '#ff5252' };
+  }, [profile]);
+
   const weeklyPlan = useMemo(() => {
-    return generateWeeklyPlan(
-      (profile?.fitness_goal as any) || null,
-      programs,
-      new Date(),
-      profile?.bmi || 22
-    );
+    return generateWeeklyPlan(profile?.fitness_goal as any || null, programs, new Date(), profile?.bmi || 22);
   }, [profile, programs]);
+
+  const planStats = useMemo(() => {
+    const workoutDays = weeklyPlan.filter(d => !d.isRestDay).length;
+    const todayPlan = weeklyPlan.find(d => d.date.toDateString() === new Date().toDateString());
+    
+    let todayStatus = "Tập luyện";
+    if (todayPlan?.isRestDay) {
+      todayStatus = "Nghỉ ngơi ☕";
+    } else {
+      const dayIdx = (new Date().getDay() + 6) % 7; 
+      if (dayIdx === 0 || dayIdx === 3) todayStatus = "Tập nặng 🔥";
+      else if (dayIdx === 6) todayStatus = "Tập nhẹ 🌿";
+      else todayStatus = "Tập vừa 💪";
+    }
+
+    return { workoutDays, todayStatus };
+  }, [weeklyPlan]);
 
   const selectedDayPlan = useMemo(() => {
     return weeklyPlan.find(d => d.date.toDateString() === selectedDate.toDateString());
   }, [selectedDate, weeklyPlan]);
 
-  const ProgramItem = ({ program, isSuggested }: { program: Program, isSuggested?: boolean }) => (
-    <TouchableOpacity 
-      style={[styles.programCard, isSuggested && styles.suggestedCard]} 
-      activeOpacity={0.9}
-      onPress={() => onSelectProgram(program.id)}
-    >
-      <Image
-        source={{ uri: program.thumbnail_url || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438' }}
-        style={styles.thumbnail}
-      />
-      <View style={styles.programOverlay} />
-      {isSuggested && (
-        <View style={styles.suggestedBadge}>
-          <Text style={styles.suggestedText}>GỢI Ý CHO BẠN</Text>
-        </View>
-      )}
-      <View style={styles.programInfo}>
-        <View style={[
-          styles.levelBadge,
-          program.level === 'Advanced'
-            ? styles.levelAdvanced
-            : program.level === 'Intermediate'
-              ? styles.levelIntermediate
-              : styles.levelBeginner,
-        ]}>
-          <Text style={styles.levelText}>{program.level}</Text>
-        </View>
-        <Text style={styles.programTitle}>{program.title}</Text>
-      </View>
-      <View style={styles.playBtn}>
-        <MaterialIcons name="play-arrow" size={24} color={colors.onPrimaryFixed} />
-      </View>
-    </TouchableOpacity>
-  );
+  // LOGIC SẮP XẾP BÀI TẬP: KHÔNG LÀM MẤT BÀI
+  const sortedPrograms = useMemo(() => {
+    if (programs.length === 0) return [];
+    
+    const suggestedId = selectedDayPlan?.suggestedProgramId;
+    if (!suggestedId) return programs;
 
-  const renderContent = () => {
-    if (selectedDayPlan?.isRestDay) {
-      return (
-        <View style={styles.restDayContainer}>
-          <MaterialIcons name="event-seat" size={80} color={colors.primaryFixed} />
-          <Text style={styles.restDayTitle}>Hôm nay là ngày nghỉ!</Text>
-          <Text style={styles.restDaySub}>Hãy để cơ thể phục hồi để đạt hiệu quả tốt nhất.</Text>
-          <Text style={styles.otherTitle}>Hoặc xem các chương trình khác:</Text>
-          <FlatList
-            data={programs}
-            keyExtractor={(item) => 'other-' + item.id}
-            renderItem={({ item }) => <ProgramItem program={item} />}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      );
+    // Tìm vị trí bài gợi ý
+    const suggestedIdx = programs.findIndex(p => p.id === suggestedId);
+    if (suggestedIdx === -1) return programs;
+
+    // Đưa bài gợi ý lên đầu mà không dùng filter (tránh mất bài nếu trùng ID)
+    const result = [...programs];
+    const [suggestedItem] = result.splice(suggestedIdx, 1);
+    result.unshift(suggestedItem);
+    
+    return result;
+  }, [programs, selectedDayPlan]);
+
+  const handleProgramPress = (id: string) => {
+    const todayStr = toLocalDateString();
+    const targetStr = toLocalDateString(selectedDate);
+    if (targetStr > todayStr) {
+      Alert.alert("Thông báo", "Bạn không thể thực hiện bài tập cho ngày tương lai.");
+      return;
     }
-
-    const suggestedProg = programs.find(p => p.id === selectedDayPlan?.suggestedProgramId);
-    const otherProgs = programs.filter(p => p.id !== suggestedProg?.id);
-
-    return (
-      <View style={{ flex: 1 }}>
-        {suggestedProg && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Chương trình dành cho bạn</Text>
-            <ProgramItem program={suggestedProg} isSuggested />
-          </View>
-        )}
-        <Text style={styles.sectionTitle}>Tất cả chương trình</Text>
-        <FlatList
-          data={otherProgs}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProgramItem program={item} />}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        />
-      </View>
-    );
+    onSelectProgram(id, selectedDate);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.title}>Lịch tập Cá nhân hóa</Text>
+          <Text style={styles.title}>Lịch tập</Text>
           <View style={styles.streakBadge}>
-            <MaterialIcons name="local-fire-department" size={18} color="#FF9800" />
-            <Text style={styles.streakText}>{streak}</Text>
+            <MaterialIcons name="local-fire-department" size={20} color="#FF9800" />
+            <Text style={styles.streakText}>{dbStreak}</Text> 
           </View>
         </View>
-        {profile && (
-          <View style={styles.bmiInfo}>
-            <Text style={styles.subtitle}>
-              BMI: {profile.bmi} ({profile.bmi && profile.bmi > 25 ? 'Thừa cân' : profile.bmi && profile.bmi < 18.5 ? 'Gầy' : 'Cân đối'})
-            </Text>
-            <Text style={styles.goalText}>
-              Mục tiêu: {profile.fitness_goal === 'lose_weight' ? 'Giảm cân' : 
-                        profile.fitness_goal === 'build_muscle' ? 'Tăng cơ' : 
-                        profile.fitness_goal === 'flexibility' ? 'Dẻo dai' : 'Duy trì'}
-            </Text>
+
+        <View style={styles.bmiCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoLabel}>Chỉ số BMI</Text>
+            <Text style={styles.bmiValueText}>{profile?.bmi ? profile.bmi.toFixed(1) : '--'}</Text>
           </View>
-        )}
+          <View style={styles.divider} />
+          <View style={{ alignItems: 'flex-end', flex: 1.5 }}>
+            <Text style={[styles.bmiStatusText, { color: bmiInfo.color }]}>
+              {bmiInfo.label}
+            </Text>
+            <Text style={styles.infoLabel}>Trạng thái cơ thể</Text>
+          </View>
+        </View>
+
+        <View style={styles.planSummaryRow}>
+          <View style={styles.summaryItem}>
+            <MaterialIcons name="event-available" size={16} color={colors.primaryFixed} />
+            <Text style={styles.summaryText}>Lịch tuần: <Text style={styles.boldText}>{planStats.workoutDays} ngày tập</Text></Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <MaterialIcons name="list" size={16} color={colors.primaryFixed} />
+            <Text style={styles.summaryText}>Hiển thị: <Text style={[styles.boldText, programs.length < 5 && { color: '#ff5252' }]}>{programs.length} chương trình</Text></Text>
+          </View>
+        </View>
       </View>
 
-      <HorizontalCalendar 
-        selectedDate={selectedDate} 
-        onDateSelect={setSelectedDate}
-        weeklyPlan={weeklyPlan}
-        completedDays={completedDays}
-      />
+      <HorizontalCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} weeklyPlan={weeklyPlan} completedDays={completedDays} />
 
       {loading ? (
-        <View style={styles.loadingArea}>
-          <ActivityIndicator size="large" color={colors.primaryFixed} />
-        </View>
-      ) : renderContent()}
+        <View style={styles.loadingArea}><ActivityIndicator size="large" color={colors.primaryFixed} /></View>
+      ) : (
+        <FlatList
+          data={sortedPrograms}
+          keyExtractor={(item, index) => item.id + index} // Đảm bảo key luôn duy nhất
+          style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primaryFixed]} tintColor={colors.primaryFixed} />
+          }
+          ListHeaderComponent={selectedDayPlan?.isRestDay ? (
+            <View style={styles.restDayMessage}>
+              <MaterialIcons name="spa" size={48} color={colors.primaryFixed} />
+              <Text style={styles.restDayTitle}>Hôm nay là ngày nghỉ ngơi</Text>
+              <Text style={styles.restDaySubtitle}>Hãy để cơ bắp phục hồi. Danh sách bài tập vẫn hiển thị bên dưới để bạn tham khảo.</Text>
+            </View>
+          ) : null}
+          renderItem={({ item }) => {
+            const isSuggested = item.id === selectedDayPlan?.suggestedProgramId;
+            return (
+              <TouchableOpacity 
+                style={[styles.programCard, isSuggested && styles.suggestedCard]} 
+                onPress={() => handleProgramPress(item.id)}
+              >
+                <Image source={{ uri: item.thumbnail_url }} style={styles.thumbnail} />
+                <View style={styles.programOverlay} />
+                {isSuggested && (
+                  <View style={styles.suggestedBadge}>
+                    <MaterialIcons name="star" size={12} color={colors.onPrimaryFixed} />
+                    <Text style={styles.suggestedText}>GỢI Ý TỐT NHẤT</Text>
+                  </View>
+                )}
+                <View style={styles.programInfo}>
+                  <Text style={[styles.programTitle, isSuggested && { color: colors.primaryFixed, fontSize: 19 }]}>{item.title}</Text>
+                  <Text style={styles.levelText}>{item.level}</Text>
+                </View>
+                <View style={styles.playBtn}><MaterialIcons name="play-arrow" size={24} color={colors.onPrimaryFixed} /></View>
+              </TouchableOpacity>
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  header: { paddingHorizontal: 20, paddingTop: 10, marginBottom: 15 },
+  header: { paddingHorizontal: 20, paddingTop: 10, gap: 12 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontFamily: 'Montserrat-Bold', fontSize: 22, color: colors.onSurface },
-  streakBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 152, 0, 0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  streakText: { fontFamily: 'Montserrat-Bold', fontSize: 16, color: '#FF9800', marginLeft: 4 },
-  bmiInfo: { marginTop: 4 },
-  subtitle: { fontFamily: 'Inter-Bold', fontSize: 13, color: colors.primaryFixed },
-  goalText: { fontFamily: 'Inter-Medium', fontSize: 13, color: colors.onSurfaceVariant, marginTop: 2 },
-  calendarContainer: { marginBottom: 20 },
-  calendarList: { paddingHorizontal: 16, gap: 12 },
-  dayCard: { width: 60, height: 85, backgroundColor: colors.surfaceContainerHigh, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginHorizontal: 4 },
-  dayCardActive: { backgroundColor: colors.primaryFixed, borderColor: colors.primaryFixed },
-  dayName: { fontFamily: 'Inter-Medium', fontSize: 12, color: colors.onSurfaceVariant, textTransform: 'uppercase' },
+  title: { fontFamily: 'Montserrat-Bold', fontSize: 24, color: colors.onSurface },
+  streakBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 152, 0, 0.15)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  streakText: { fontFamily: 'Montserrat-Bold', fontSize: 18, color: '#FF9800', marginLeft: 4 },
+  bmiCard: { backgroundColor: colors.surfaceContainerHigh, borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', elevation: 2 },
+  infoLabel: { fontFamily: 'Inter-Medium', fontSize: 11, color: colors.onSurfaceVariant, textTransform: 'uppercase' },
+  bmiValueText: { fontFamily: 'Montserrat-Bold', fontSize: 26, color: colors.primaryFixed, marginTop: 2 },
+  divider: { width: 1, height: 40, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 15 },
+  bmiStatusText: { fontFamily: 'Montserrat-Bold', fontSize: 18, textAlign: 'right' },
+  planSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
+  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  summaryText: { fontFamily: 'Inter-Medium', fontSize: 12, color: colors.onSurfaceVariant },
+  boldText: { color: colors.onSurface, fontFamily: 'Inter-Bold' },
+  calendarContainer: { marginVertical: 10 },
+  calendarList: { paddingHorizontal: 16, gap: 10 },
+  dayCard: { width: 60, height: 85, backgroundColor: colors.surfaceContainerHigh, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  dayCardActive: { backgroundColor: colors.primaryFixed },
+  dayName: { fontFamily: 'Inter-Medium', fontSize: 11, color: colors.onSurfaceVariant, textTransform: 'uppercase' },
   dayNum: { fontFamily: 'Montserrat-Bold', fontSize: 20, color: colors.onSurface, marginTop: 4 },
   dayTextActive: { color: colors.onPrimaryFixed },
-  todayDot: { width: 4, height: 4, borderRadius: 2, position: 'absolute', bottom: 8 },
-  restDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.onSurfaceVariant, position: 'absolute', top: 8 },
-  checkIcon: { position: 'absolute', top: 6, right: 6 },
-  section: { paddingHorizontal: 20, marginBottom: 10 },
-  sectionTitle: { fontFamily: 'Montserrat-Bold', fontSize: 16, color: colors.onSurface, marginBottom: 12, paddingHorizontal: 20 },
+  checkIcon: { position: 'absolute', top: -5, right: -5, backgroundColor: colors.surface, borderRadius: 10, padding: 2 },
   listContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  programCard: { height: 180, borderRadius: 24, overflow: 'hidden', marginBottom: 16, backgroundColor: colors.surfaceContainerHigh },
-  suggestedCard: { borderWidth: 2, borderColor: colors.primaryFixed },
+  restDayMessage: { alignItems: 'center', padding: 30, backgroundColor: colors.surfaceContainerLow, borderRadius: 24, marginBottom: 20, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.primaryFixed },
+  restDayTitle: { fontFamily: 'Montserrat-Bold', fontSize: 18, color: colors.onSurface, marginTop: 12 },
+  restDaySubtitle: { fontFamily: 'Inter-Regular', fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  programCard: { height: 150, borderRadius: 24, overflow: 'hidden', marginBottom: 15 },
+  suggestedCard: { height: 180, borderWidth: 3, borderColor: colors.primaryFixed, elevation: 8, shadowColor: colors.primaryFixed, shadowOpacity: 0.3, shadowRadius: 10 },
   thumbnail: { width: '100%', height: '100%' },
-  programOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
-  suggestedBadge: { position: 'absolute', top: 15, right: 15, backgroundColor: colors.primaryFixed, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, zIndex: 10 },
-  suggestedText: { fontFamily: 'Inter-Bold', fontSize: 10, color: colors.onPrimaryFixed },
-  programInfo: { position: 'absolute', bottom: 20, left: 20, right: 70 },
-  levelBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 8 },
-  levelBeginner: { backgroundColor: '#4ade80' },
-  levelIntermediate: { backgroundColor: '#fbbf24' },
-  levelAdvanced: { backgroundColor: '#f87171' },
-  levelText: { fontFamily: 'Inter-Bold', fontSize: 10, color: '#000', textTransform: 'uppercase' },
-  programTitle: { fontFamily: 'Montserrat-Bold', fontSize: 18, color: '#fff' },
-  playBtn: { position: 'absolute', right: 20, bottom: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryFixed, justifyContent: 'center', alignItems: 'center' },
+  programOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },
+  suggestedBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: colors.primaryFixed, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  suggestedText: { fontFamily: 'Inter-Bold', fontSize: 9, color: colors.onPrimaryFixed },
+  programInfo: { position: 'absolute', bottom: 15, left: 20 },
+  programTitle: { fontFamily: 'Montserrat-Bold', fontSize: 17, color: '#fff' },
+  levelText: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 },
+  playBtn: { position: 'absolute', right: 20, bottom: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryFixed, justifyContent: 'center', alignItems: 'center' },
   loadingArea: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  restDayContainer: { flex: 1, alignItems: 'center', paddingTop: 40, paddingHorizontal: 20 },
-  restDayTitle: { fontFamily: 'Montserrat-Bold', fontSize: 22, color: colors.onSurface, marginTop: 20 },
-  restDaySub: { fontFamily: 'Inter-Medium', fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: 10, marginBottom: 30 },
-  otherTitle: { alignSelf: 'flex-start', fontFamily: 'Montserrat-Bold', fontSize: 16, color: colors.onSurface, marginBottom: 15 },
 });
