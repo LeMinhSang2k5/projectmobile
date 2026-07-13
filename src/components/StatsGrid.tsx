@@ -120,6 +120,18 @@ export default function StatsGrid({
     }
   };
 
+  const handleSetWaterDirect = async (ml: number) => {
+    const previousWater = water;
+    setWater((current) => (current ? { ...current, water_ml: ml } : current));
+    try {
+      const updated = await setWaterMl(userId, ml, profile, toLocalDateString());
+      setWater(updated);
+    } catch (err) {
+      setWater(previousWater);
+      console.error('Set water direct error:', err);
+    }
+  };
+
   const calorieGoal = getCalorieGoal(profile);
   const caloriesConsumed = nutrition?.calories_consumed ?? 0;
   const waterMl = water?.water_ml ?? 0;
@@ -177,15 +189,16 @@ export default function StatsGrid({
         </GlassCard>
       </TouchableOpacity>
 
-      <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
+      <View>
         <WaterTracker
           waterMl={waterMl}
           waterGoalMl={waterGoalMl}
           onAddWater={handleAddWater}
+          onSetWaterMl={handleSetWaterDirect}
           onSetWaterToGoal={handleSetWaterToGoal}
           compact
         />
-      </TouchableOpacity>
+      </View>
 
       <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
         <GlassCard padding={spacing.lg}>

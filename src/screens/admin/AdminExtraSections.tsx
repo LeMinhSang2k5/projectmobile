@@ -8,23 +8,29 @@ import {
   RefreshControl,
   FlatList,
   TouchableOpacity,
+  Image,
+  StyleSheet,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
+import { spacing, radii } from '../../theme/layout';
 import GlassCard from '../../components/ui/GlassCard';
 import AdminEditSheet from '../../components/admin/AdminEditSheet';
 import { useAdminDialog } from '../../components/admin/AdminDialogProvider';
 import type { WorkoutCourse } from '../../types';
 import {
   createWorkoutCourse,
+  deleteMediaFile,
   deleteWorkoutCourse,
   importCsvRows,
+  listMediaFiles,
   listWorkoutCourses,
   updateWorkoutCourse,
   uploadMediaFile,
   type ImportType,
   type MediaBucket,
+  type MediaFileItem,
   type WorkoutCourseInput,
 } from '../../services/adminService';
 import {
@@ -230,12 +236,47 @@ export function AdminCoursesSection() {
 }
 
 export function AdminMediaSection() {
-  const { alert } = useAdminDialog();
+  const { alert, confirm } = useAdminDialog();
   const [bucket, setBucket] = useState<MediaBucket>('exercise-media');
-  const [path, setPath] = useState('uploads/demo.jpg');
+  const [path, setPath] = useState('');
   const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
+  const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<MediaFileItem[]>([]);
+
+  const loadMediaFiles = useCallback(async () => {
+    setListLoading(true);
+    try {
+      setMediaFiles(await listMediaFiles(bucket));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể tải danh sách media');
+    } finally {
+      setListLoading(false);
+    }
+  }, [bucket]);
+
+  useEffect(() => {
+    void loadMediaFiles();
+  }, [loadMediaFiles]);
+
+  const formatUploadError = (message: string): string => {
+    const lower = message.toLowerCase();
+    if (lower.includes('resource already exists') || lower.includes('already exists')) {
+      return 'File đã tồn tại tại đường dẫn này. Hãy đổi path hoặc deploy lại Edge Function media-upload (đã bật ghi đè).';
+    }
+    return message;
+  };
+
+  const buildUploadPath = (rawPath: string, ext: string, fileName?: string | null): string => {
+    const trimmed = rawPath.trim();
+    if (!trimmed) {
+      const safeName = (fileName ?? `media-${Date.now()}.${ext}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+      return safeName.includes('/') ? safeName : `uploads/${safeName}`;
+    }
+    return trimmed.includes('.') ? trimmed : `${trimmed}.${ext}`;
+  };
 
   const pickAndUpload = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -261,7 +302,7 @@ export function AdminMediaSection() {
       return;
     }
 
-    const uploadPath = path.trim() || `uploads/${Date.now()}.${ext}`;
+    const uploadPath = buildUploadPath(path, ext, asset.fileName);
     const contentType =
       asset.mimeType ??
       (ext === 'mp4' ? 'video/mp4' : ext === 'gif' ? 'image/gif' : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
@@ -272,20 +313,58 @@ export function AdminMediaSection() {
     try {
       const { publicUrl: url } = await uploadMediaFile({
         bucket,
-        path: uploadPath.includes('.') ? uploadPath : `${uploadPath}.${ext}`,
+        path: uploadPath,
         localUri: asset.uri,
         contentType,
       });
       setPublicUrl(url);
+      setPath(uploadPath);
+      await loadMediaFiles();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload thất bại');
+      setError(formatUploadError(err instanceof Error ? err.message : 'Upload thất bại'));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSelectUrl = async (url: string) => {
+    setPublicUrl(url);
+    await alert({
+      title: 'Đã chọn URL',
+      message: 'Giữ để copy URL bên trên, rồi dán vào Ảnh thumbnail (Programs) hoặc Media URL (Exercises).',
+    });
+  };
+
+  const handleDelete = async (item: MediaFileItem) => {
+    const ok = await confirm({
+      title: 'Xóa file',
+      message: `Xóa "${item.name}" khỏi Storage? Hành động không thể hoàn tác.`,
+      confirmLabel: 'Xóa',
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setDeletingPath(item.path);
+    setError(null);
+    try {
+      await deleteMediaFile(bucket, item.path);
+      if (publicUrl === item.publicUrl) setPublicUrl(null);
+      await loadMediaFiles();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể xóa file');
+    } finally {
+      setDeletingPath(null);
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={
+        <RefreshControl refreshing={listLoading} onRefresh={loadMediaFiles} tintColor={colors.primaryFixed} />
+      }
+    >
       <Text style={styles.blockTitle}>Upload media</Text>
       <GlassCard style={styles.formCard}>
         <Text style={styles.sectionHint}>Chọn ảnh/GIF/MP4 từ thiết bị, upload qua Edge Function media-upload.</Text>
@@ -295,7 +374,10 @@ export function AdminMediaSection() {
               <TouchableOpacity
                 key={b}
                 style={[styles.chip, bucket === b && styles.chipActive]}
-                onPress={() => setBucket(b)}
+                onPress={() => {
+                  setBucket(b);
+                  setPublicUrl(null);
+                }}
                 activeOpacity={0.85}
               >
                 <Text style={[styles.chipText, bucket === b && styles.chipTextActive]}>{BUCKET_LABELS[b]}</Text>
@@ -303,16 +385,19 @@ export function AdminMediaSection() {
             ))}
           </View>
         </AdminField>
-        <AdminField label="Đường dẫn (path)" hint="VD: uploads/burpee.mp4">
-          <AdminInput placeholder="uploads/demo.jpg" value={path} onChangeText={setPath} autoCapitalize="none" />
+        <AdminField
+          label="Đường dẫn (path)"
+          hint="Để trống sẽ tự đặt tên theo file. Cùng path sẽ ghi đè file cũ."
+        >
+          <AdminInput placeholder="uploads/burpee.mp4" value={path} onChangeText={setPath} autoCapitalize="none" />
         </AdminField>
         <AdminSubmit label={loading ? 'Đang upload...' : 'Chọn file & upload'} loading={loading} onPress={pickAndUpload} />
       </GlassCard>
       {publicUrl ? (
-        <GlassCard variant="accent">
-          <Text style={styles.successTitle}>Upload thành công</Text>
+        <GlassCard variant="accent" style={mediaStyles.selectedCard}>
+          <Text style={styles.successTitle}>URL đang dùng</Text>
           <Text style={styles.urlText} selectable>{publicUrl}</Text>
-          <Text style={styles.sectionHint}>Dán URL vào thumbnail_url hoặc media_url.</Text>
+          <Text style={styles.sectionHint}>Dán vào Ảnh thumbnail (Programs) hoặc Media URL (Exercises).</Text>
         </GlassCard>
       ) : null}
       {error ? (
@@ -321,9 +406,154 @@ export function AdminMediaSection() {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
+
+      <Text style={[styles.blockTitle, mediaStyles.libraryTitle]}>Kho media đã upload</Text>
+      <Text style={styles.sectionHint}>
+        Bucket: {BUCKET_LABELS[bucket]}. Chọn URL để dùng lại hoặc xóa file không cần.
+      </Text>
+      {listLoading && mediaFiles.length === 0 ? (
+        <ActivityIndicator color={colors.primaryFixed} style={{ marginVertical: spacing.lg }} />
+      ) : null}
+      <GlassCard padding={0} style={mediaStyles.libraryCard}>
+        {mediaFiles.length === 0 && !listLoading ? (
+          <Text style={styles.emptyText}>Chưa có file trong bucket này.</Text>
+        ) : (
+          mediaFiles.map((item, index) => (
+            <View
+              key={item.path}
+              style={[mediaStyles.mediaRow, index === mediaFiles.length - 1 && mediaStyles.mediaRowLast]}
+            >
+              <View style={mediaStyles.mediaPreview}>
+                {item.kind === 'image' || item.kind === 'gif' ? (
+                  <Image source={{ uri: item.publicUrl }} style={mediaStyles.mediaThumb} resizeMode="cover" />
+                ) : (
+                  <View style={mediaStyles.mediaThumbFallback}>
+                    <MaterialIcons
+                      name={item.kind === 'video' ? 'videocam' : 'insert-drive-file'}
+                      size={22}
+                      color={colors.primaryFixed}
+                    />
+                  </View>
+                )}
+              </View>
+              <View style={mediaStyles.mediaInfo}>
+                <Text style={mediaStyles.mediaName} numberOfLines={1}>{item.name}</Text>
+                <Text style={mediaStyles.mediaPath} numberOfLines={1}>{item.path}</Text>
+                <Text style={mediaStyles.mediaUrl} selectable numberOfLines={2}>{item.publicUrl}</Text>
+              </View>
+              <View style={mediaStyles.mediaActions}>
+                <TouchableOpacity
+                  style={[
+                    mediaStyles.mediaActionBtn,
+                    publicUrl === item.publicUrl && mediaStyles.mediaActionBtnActive,
+                  ]}
+                  onPress={() => void handleSelectUrl(item.publicUrl)}
+                  hitSlop={6}
+                >
+                  <MaterialIcons name="link" size={18} color={colors.primaryFixed} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[mediaStyles.mediaActionBtn, mediaStyles.mediaActionBtnDanger]}
+                  onPress={() => void handleDelete(item)}
+                  disabled={deletingPath === item.path}
+                  hitSlop={6}
+                >
+                  {deletingPath === item.path ? (
+                    <ActivityIndicator size="small" color={colors.danger} />
+                  ) : (
+                    <MaterialIcons name="delete-outline" size={18} color={colors.danger} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
+      </GlassCard>
     </ScrollView>
   );
 }
+
+const mediaStyles = StyleSheet.create({
+  selectedCard: {
+    marginBottom: spacing.md,
+  },
+  libraryTitle: {
+    marginTop: spacing.sm,
+  },
+  libraryCard: {
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  mediaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.glassBorder,
+  },
+  mediaRowLast: {
+    borderBottomWidth: 0,
+  },
+  mediaPreview: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.sm,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  mediaThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  mediaThumbFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  mediaName: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: colors.onSurface,
+  },
+  mediaPath: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+  mediaUrl: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: colors.primaryFixed,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  mediaActions: {
+    gap: spacing.sm,
+  },
+  mediaActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.surfaceContainerHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaActionBtnActive: {
+    borderColor: colors.primaryFixed,
+    backgroundColor: colors.accentMuted,
+  },
+  mediaActionBtnDanger: {
+    borderColor: 'rgba(255, 107, 107, 0.25)',
+    backgroundColor: 'rgba(255, 107, 107, 0.08)',
+  },
+});
 
 export function AdminImportSection() {
   const { alert } = useAdminDialog();

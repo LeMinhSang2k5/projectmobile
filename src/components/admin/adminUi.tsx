@@ -15,6 +15,12 @@ import { spacing, radii } from '../../theme/layout';
 import GlassCard from '../ui/GlassCard';
 import type { Program, WorkoutCourse } from '../../types';
 import type { ProgramOption } from '../../services/adminService';
+import {
+  BADGE_CRITERIA_HINTS,
+  BADGE_CRITERIA_LABELS,
+  BADGE_CRITERIA_TYPES,
+  type BadgeCriteriaType,
+} from '../../lib/badgeCriteria';
 
 export const PROGRAM_LEVELS: Program['level'][] = ['Beginner', 'Intermediate', 'Advanced'];
 
@@ -220,23 +226,102 @@ export function ProgramPicker({
   );
 }
 
+function isMaterialIconName(name: string): name is keyof typeof MaterialIcons.glyphMap {
+  return name in MaterialIcons.glyphMap;
+}
+
+export function BadgeIconPicker({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string;
+  onChange: (icon: string) => void;
+}) {
+  const validOptions = options.filter(isMaterialIconName);
+  if (!validOptions.length) {
+    return <Text style={adminStyles.emptyText}>Chưa có icon trong hệ thống.</Text>;
+  }
+
+  return (
+    <View style={adminStyles.iconGrid}>
+      {validOptions.map((iconName) => {
+        const active = value === iconName;
+        return (
+          <TouchableOpacity
+            key={iconName}
+            style={[adminStyles.iconCell, active && adminStyles.iconCellActive]}
+            onPress={() => onChange(iconName)}
+            activeOpacity={0.85}
+            accessibilityLabel={iconName}
+          >
+            <MaterialIcons
+              name={iconName}
+              size={24}
+              color={active ? colors.onPrimaryFixed : colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+export function BadgeCriteriaPicker({
+  value,
+  onChange,
+}: {
+  value: BadgeCriteriaType;
+  onChange: (type: BadgeCriteriaType) => void;
+}) {
+  return (
+    <View style={adminStyles.chipRow}>
+      {BADGE_CRITERIA_TYPES.map((type) => {
+        const active = value === type;
+        return (
+          <TouchableOpacity
+            key={type}
+            style={[adminStyles.chip, active && adminStyles.chipActive]}
+            onPress={() => onChange(type)}
+            activeOpacity={0.85}
+          >
+            <Text style={[adminStyles.chipText, active && adminStyles.chipTextActive]}>
+              {BADGE_CRITERIA_LABELS[type]}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+export function getBadgeCriteriaValueHint(type: BadgeCriteriaType): string {
+  return BADGE_CRITERIA_HINTS[type];
+}
+
 export function AdminListRow({
   title,
   subtitle,
   onEdit,
   onDelete,
   isLast = false,
+  leadingIcon,
 }: {
   title: string;
   subtitle: string;
   onEdit?: () => void;
   onDelete: () => void;
   isLast?: boolean;
+  leadingIcon?: keyof typeof MaterialIcons.glyphMap;
 }) {
+  const rowIcon =
+    leadingIcon && leadingIcon in MaterialIcons.glyphMap ? leadingIcon : 'article';
+
   return (
     <View style={[adminStyles.listRow, isLast && adminStyles.listRowLast]}>
       <View style={adminStyles.listIconWrap}>
-        <MaterialIcons name="article" size={18} color={colors.primaryFixed} />
+        <MaterialIcons name={rowIcon} size={18} color={colors.primaryFixed} />
       </View>
       <View style={adminStyles.listTextWrap}>
         <Text style={adminStyles.listTitle}>{title}</Text>
@@ -326,6 +411,25 @@ export const adminStyles = StyleSheet.create({
   },
   chipTextActive: {
     color: colors.primaryFixed,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  iconCell: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    backgroundColor: 'rgba(30, 32, 32, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCellActive: {
+    borderColor: colors.primaryFixed,
+    backgroundColor: colors.primaryFixed,
   },
   submitBtn: {
     marginTop: spacing.sm,

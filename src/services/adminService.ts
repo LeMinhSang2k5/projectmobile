@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system'
+import { readAsStringAsync } from 'expo-file-system/legacy'
 import { decode } from 'base64-arraybuffer'
 import { supabase } from '../../utils/supabase'
 import type { Badge, Exercise, Food, Program, WorkoutCourse } from '../types'
@@ -65,6 +65,14 @@ export type ProgramOption = Pick<Program, 'id' | 'title'>
 
 export type MediaBucket = 'program-thumbnails' | 'exercise-media'
 
+export type MediaFileItem = {
+  path: string
+  publicUrl: string
+  name: string
+  updatedAt: string | null
+  kind: 'image' | 'video' | 'gif' | 'other'
+}
+
 export type ImportType = 'foods' | 'programs' | 'exercises'
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim()
@@ -124,7 +132,7 @@ export async function uploadMediaFile(input: {
     throw new Error(signedBody.error ?? 'Không lấy được signed URL')
   }
 
-  const base64 = await FileSystem.readAsStringAsync(input.localUri, {
+  const base64 = await readAsStringAsync(input.localUri, {
     encoding: 'base64',
   })
 
@@ -138,6 +146,56 @@ export async function uploadMediaFile(input: {
   }
 
   return { publicUrl: signedBody.publicUrl as string }
+}
+
+function mediaKind(name: string): MediaFileItem['kind'] {
+  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  if (ext === 'gif') return 'gif'
+  if (ext === 'mp4') return 'video'
+  if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) return 'image'
+  return 'other'
+}
+
+async function listMediaAt(bucket: MediaBucket, folder: string): Promise<MediaFileItem[]> {
+  const { data, error } = await supabase.storage.from(bucket).list(folder, {
+    limit: 200,
+    sortBy: { column: 'updated_at', order: 'desc' },
+  })
+  if (error) throw error
+
+  const items: MediaFileItem[] = []
+  for (const entry of data ?? []) {
+    const path = folder ? `${folder}/${entry.name}` : entry.name
+    const isFile = /\.[a-z0-9]+$/i.test(entry.name)
+    if (!isFile) {
+      items.push(...(await listMediaAt(bucket, path)))
+      continue
+    }
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path)
+    items.push({
+      path,
+      publicUrl: urlData.publicUrl,
+      name: entry.name,
+      updatedAt: entry.updated_at ?? entry.created_at ?? null,
+      kind: mediaKind(entry.name),
+    })
+  }
+  return items
+}
+
+export async function listMediaFiles(bucket: MediaBucket): Promise<MediaFileItem[]> {
+  const items = await listMediaAt(bucket, '')
+  return items.sort((a, b) => {
+    const ta = a.updatedAt ? Date.parse(a.updatedAt) : 0
+    const tb = b.updatedAt ? Date.parse(b.updatedAt) : 0
+    return tb - ta
+  })
+}
+
+export async function deleteMediaFile(bucket: MediaBucket, path: string): Promise<void> {
+  const { error } = await supabase.storage.from(bucket).remove([path])
+  if (error) throw error
 }
 
 export function parseCsv(text: string): Record<string, string>[] {

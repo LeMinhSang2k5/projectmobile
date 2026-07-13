@@ -85,7 +85,7 @@ export default {
 
     const { data, error } = await ctx.supabaseAdmin.storage
       .from(bucket)
-      .createSignedUploadUrl(path)
+      .createSignedUploadUrl(path, { upsert: true })
 
     if (error) {
       return jsonResponse({ error: error.message }, 500)

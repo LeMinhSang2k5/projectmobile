@@ -21,11 +21,20 @@ import {
   AdminInput,
   AdminListRow,
   AdminSubmit,
+  BadgeCriteriaPicker,
+  BadgeIconPicker,
   LEVEL_LABELS,
   LevelPicker,
   ProgramPicker,
   adminStyles,
+  getBadgeCriteriaValueHint,
 } from '../../components/admin/adminUi';
+import {
+  formatBadgeCriteriaLabel,
+  getBadgeIconOptions,
+  normalizeBadgeCriteriaType,
+  type BadgeCriteriaType,
+} from '../../lib/badgeCriteria';
 import type { Badge, Exercise, Food, Program } from '../../types';
 import {
   createBadge,
@@ -790,9 +799,11 @@ function AdminBadgesSection() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('emoji-events');
-  const [criteriaType, setCriteriaType] = useState('manual');
+  const [criteriaType, setCriteriaType] = useState<BadgeCriteriaType>('workout_sessions');
   const [criteriaValue, setCriteriaValue] = useState('1');
   const [sortOrder, setSortOrder] = useState('0');
+
+  const iconOptions = getBadgeIconOptions(rows);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -815,7 +826,7 @@ function AdminBadgesSection() {
     setTitle('');
     setDescription('');
     setIcon('emoji-events');
-    setCriteriaType('manual');
+    setCriteriaType('workout_sessions');
     setCriteriaValue('1');
     setSortOrder('0');
   };
@@ -826,7 +837,7 @@ function AdminBadgesSection() {
     setTitle(item.title);
     setDescription(item.description);
     setIcon(item.icon);
-    setCriteriaType(item.criteria_type);
+    setCriteriaType(normalizeBadgeCriteriaType(item.criteria_type));
     setCriteriaValue(String(item.criteria_value));
     setSortOrder(String(item.sort_order));
   };
@@ -836,14 +847,14 @@ function AdminBadgesSection() {
     title: title.trim(),
     description: description.trim(),
     icon: icon.trim() || 'emoji-events',
-    criteria_type: criteriaType.trim() || 'manual',
+    criteria_type: criteriaType,
     criteria_value: Number(criteriaValue) || 0,
     sort_order: Number(sortOrder) || 0,
   });
 
   const handleCreate = async () => {
     if (!code.trim() || !title.trim()) {
-      await alert({ title: 'Lỗi', message: 'Code và tiêu đề không được để trống.' });
+      await alert({ title: 'Lỗi', message: 'Mã định danh và tiêu đề không được để trống.' });
       return;
     }
     setSaving(true);
@@ -898,8 +909,16 @@ function AdminBadgesSection() {
         onRefresh={load}
         form={
           <>
-            <AdminField label="Code" hint="Bắt buộc, không dấu cách">
-              <AdminInput placeholder="first_workout" value={code} onChangeText={setCode} autoCapitalize="none" />
+            <AdminField
+              label="Mã định danh"
+              hint="Tên duy nhất, viết thường, dùng gạch dưới. VD: first_workout, streak_7"
+            >
+              <AdminInput
+                placeholder="first_workout"
+                value={code}
+                onChangeText={setCode}
+                autoCapitalize="none"
+              />
             </AdminField>
             <AdminField label="Tiêu đề" hint="Bắt buộc">
               <AdminInput placeholder="Buổi tập đầu tiên" value={title} onChangeText={setTitle} />
@@ -907,14 +926,19 @@ function AdminBadgesSection() {
             <AdminField label="Mô tả">
               <AdminInput placeholder="Mô tả huy hiệu" value={description} onChangeText={setDescription} multiline />
             </AdminField>
-            <AdminField label="Icon">
-              <AdminInput placeholder="emoji-events" value={icon} onChangeText={setIcon} autoCapitalize="none" />
+            <AdminField label="Biểu tượng" hint="Chọn icon Material đang dùng trong hệ thống">
+              <BadgeIconPicker options={iconOptions} value={icon} onChange={setIcon} />
             </AdminField>
-            <AdminField label="Loại tiêu chí">
-              <AdminInput placeholder="manual" value={criteriaType} onChangeText={setCriteriaType} autoCapitalize="none" />
+            <AdminField label="Loại tiêu chí" hint={getBadgeCriteriaValueHint(criteriaType)}>
+              <BadgeCriteriaPicker value={criteriaType} onChange={setCriteriaType} />
             </AdminField>
-            <AdminField label="Giá trị tiêu chí">
-              <AdminInput placeholder="1" value={criteriaValue} onChangeText={setCriteriaValue} keyboardType="numeric" />
+            <AdminField label="Giá trị tiêu chí" hint={getBadgeCriteriaValueHint(criteriaType)}>
+              <AdminInput
+                placeholder={criteriaType === 'calories_burned_day' ? '500' : '1'}
+                value={criteriaValue}
+                onChangeText={setCriteriaValue}
+                keyboardType="numeric"
+              />
             </AdminField>
             <AdminField label="Thứ tự hiển thị">
               <AdminInput placeholder="0" value={sortOrder} onChangeText={setSortOrder} keyboardType="numeric" />
@@ -930,7 +954,12 @@ function AdminBadgesSection() {
             renderItem={({ item, index }) => (
               <AdminListRow
                 title={item.title}
-                subtitle={`${item.code} · ${item.criteria_type}/${item.criteria_value}`}
+                subtitle={`${item.code} · ${formatBadgeCriteriaLabel(item.criteria_type, item.criteria_value)}`}
+                leadingIcon={
+                  item.icon in MaterialIcons.glyphMap
+                    ? (item.icon as keyof typeof MaterialIcons.glyphMap)
+                    : undefined
+                }
                 onEdit={() => openEdit(item)}
                 onDelete={() => void handleDelete(item.id, item.title)}
                 isLast={index === rows.length - 1}
@@ -947,8 +976,11 @@ function AdminBadgesSection() {
         onClose={() => { setEditing(null); resetForm(); }}
         onSave={handleUpdate}
       >
-        <AdminField label="Code">
-          <AdminInput placeholder="Code" value={code} onChangeText={setCode} autoCapitalize="none" />
+        <AdminField
+          label="Mã định danh"
+          hint="Tên duy nhất, viết thường, dùng gạch dưới"
+        >
+          <AdminInput placeholder="first_workout" value={code} onChangeText={setCode} autoCapitalize="none" />
         </AdminField>
         <AdminField label="Tiêu đề">
           <AdminInput placeholder="Tiêu đề" value={title} onChangeText={setTitle} />
@@ -956,14 +988,19 @@ function AdminBadgesSection() {
         <AdminField label="Mô tả">
           <AdminInput placeholder="Mô tả" value={description} onChangeText={setDescription} multiline />
         </AdminField>
-        <AdminField label="Icon">
-          <AdminInput placeholder="Icon" value={icon} onChangeText={setIcon} autoCapitalize="none" />
+        <AdminField label="Biểu tượng">
+          <BadgeIconPicker options={iconOptions} value={icon} onChange={setIcon} />
         </AdminField>
-        <AdminField label="Loại tiêu chí">
-          <AdminInput placeholder="Criteria type" value={criteriaType} onChangeText={setCriteriaType} autoCapitalize="none" />
+        <AdminField label="Loại tiêu chí" hint={getBadgeCriteriaValueHint(criteriaType)}>
+          <BadgeCriteriaPicker value={criteriaType} onChange={setCriteriaType} />
         </AdminField>
-        <AdminField label="Giá trị tiêu chí">
-          <AdminInput placeholder="1" value={criteriaValue} onChangeText={setCriteriaValue} keyboardType="numeric" />
+        <AdminField label="Giá trị tiêu chí" hint={getBadgeCriteriaValueHint(criteriaType)}>
+          <AdminInput
+            placeholder={criteriaType === 'calories_burned_day' ? '500' : '1'}
+            value={criteriaValue}
+            onChangeText={setCriteriaValue}
+            keyboardType="numeric"
+          />
         </AdminField>
         <AdminField label="Thứ tự hiển thị">
           <AdminInput placeholder="0" value={sortOrder} onChangeText={setSortOrder} keyboardType="numeric" />

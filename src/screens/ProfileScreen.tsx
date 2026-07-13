@@ -21,7 +21,7 @@ import {
   getWaterGoalMl,
   recalculateAndSave,
 } from '../services/healthService';
-import { getTodayWater, addWater } from '../services/waterService';
+import { getTodayWater, addWater, setWaterMl } from '../services/waterService';
 import { deleteUserAccount, exportUserData } from '../services/accountService';
 import { shareUserDataExcel } from '../lib/exportUserDataExcel';
 import { calculateAgeFromDate, toLocalDateString } from '../lib/dateUtils';
@@ -443,6 +443,18 @@ export default function ProfileScreen({
     }
   };
 
+  const handleSetWaterDirect = async (ml: number) => {
+    const previousWater = water;
+    setWater((current) => (current ? { ...current, water_ml: ml } : current));
+    try {
+      const updated = await setWaterMl(userId, ml, profile, today);
+      setWater(updated);
+    } catch (err: any) {
+      setWater(previousWater);
+      Alert.alert('Lỗi', err.message ?? 'Không thể điều chỉnh lượng nước');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -653,6 +665,7 @@ export default function ProfileScreen({
             waterMl={waterMl}
             waterGoalMl={waterGoalMl}
             onAddWater={handleAddWater}
+            onSetWaterMl={handleSetWaterDirect}
           />
         </View>
 
