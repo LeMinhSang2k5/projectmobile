@@ -54,12 +54,16 @@ import {
   getRemainingWaterMl,
 } from '../lib/limitWarnings';
 
+/** Các bữa chính hiển thị trong nhật ký: sáng, trưa, tối (không gồm bữa phụ). */
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
 type Props = {
   userId: string;
 };
 
+/**
+ * Màn hình dinh dưỡng — hiển thị tổng calo, macro, gợi ý thực đơn, nhật ký bữa ăn và theo dõi nước uống trong ngày.
+ */
 export default function NutritionScreen({ userId }: Props) {
   const today = toLocalDateString();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -87,6 +91,7 @@ export default function NutritionScreen({ userId }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const mealJournalY = useRef(0);
 
+  /** Tải hồ sơ, dinh dưỡng, nước uống, nhật ký bữa ăn và gợi ý thực đơn từ server; tự tính lại mục tiêu nếu hồ sơ đủ thông tin. */
   const fetchData = useCallback(async () => {
     try {
       let prof = await getProfile(userId);
@@ -136,16 +141,19 @@ prof = (await recalculateAndSave(userId)) ?? prof;
     ),
   ).length;
 
+  /** Tải dữ liệu lần đầu khi màn hình được mount hoặc khi `userId` thay đổi. */
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  /** Hiện lại gợi ý macro khi người dùng đã không còn vượt bất kỳ macro nào. */
   useEffect(() => {
     if (overMacroCount === 0) {
       setMacroHintDismissed(false);
     }
   }, [overMacroCount]);
 
+  /** Thêm lượng nước (ml); tự giới hạn để không vượt mục tiêu và hỏi xác nhận nếu cần điều chỉnh. */
   const handleAddWater = async (ml: number) => {
     const currentMl = water?.water_ml ?? 0;
     const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
@@ -190,6 +198,7 @@ prof = (await recalculateAndSave(userId)) ?? prof;
     }
   };
 
+  /** Đặt lượng nước uống hôm nay bằng đúng mục tiêu (đánh dấu đã hoàn thành). */
   const handleSetWaterToGoal = async () => {
     const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
     try {
@@ -200,6 +209,7 @@ const updated = await setWaterMl(userId, goalMl, profile, today);
     }
   };
 
+  /** Cập nhật trực tiếp lượng nước (kéo thanh trượt); cập nhật UI ngay, hoàn tác nếu lưu thất bại. */
   const handleSetWaterDirect = async (ml: number) => {
     const previousWater = water;
     setWater((current) => (current ? { ...current, water_ml: ml } : current));
@@ -212,6 +222,7 @@ const updated = await setWaterMl(userId, goalMl, profile, today);
     }
   };
 
+  /** Xóa một món khỏi nhật ký bữa ăn rồi làm mới dữ liệu màn hình. */
   const handleRemoveItem = async (itemId: string) => {
     try {
       await removeMealItem(userId, itemId, today);
@@ -221,6 +232,7 @@ const updated = await setWaterMl(userId, goalMl, profile, today);
     }
   };
 
+  /** Bật/tắt nhắc uống nước định kỳ; hiển thị hướng dẫn riêng khi chạy trên Expo Go. */
   const handleToggleReminder = async (value: boolean) => {
     try {
       if (value) {
@@ -241,11 +253,13 @@ const updated = await setWaterMl(userId, goalMl, profile, today);
     }
   };
 
+  /** Mở modal thêm món ăn với bữa mặc định đã chọn (sáng/trưa/tối/bữa phụ). */
   const openAddModal = (mealType: MealType) => {
     setDefaultMealType(mealType);
     setAddModalVisible(true);
   };
 
+  /** Áp dụng toàn bộ món trong gợi ý thực đơn của một bữa vào nhật ký hôm nay. */
   const handleApplySuggestedMeal = async (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     const mealSuggestions = suggestions[mealType];
     if (mealSuggestions.length === 0) {

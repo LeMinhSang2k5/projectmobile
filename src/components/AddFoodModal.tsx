@@ -25,7 +25,9 @@ import {
   isFoodQuantityOverCalorieLimit,
 } from '../lib/limitWarnings';
 
+/** Các mức khẩu phần có thể chọn khi thêm món (0.5x đến 2x). */
 const QUANTITY_OPTIONS = [0.5, 1, 1.5, 2];
+/** Các bữa chính trong modal: sáng, trưa, tối. */
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
 type Props = {
@@ -39,6 +41,9 @@ type Props = {
   onAdded: () => void;
 };
 
+/**
+ * Modal thêm món ăn — tìm kiếm món, chọn bữa/khẩu phần, kiểm tra giới hạn calo rồi lưu vào nhật ký.
+ */
 export default function AddFoodModal({
   visible,
   userId,
@@ -58,6 +63,7 @@ export default function AddFoodModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Đặt lại trạng thái form mỗi khi modal được mở. */
   useEffect(() => {
     if (visible) {
       setMealType(defaultMealType);
@@ -68,6 +74,7 @@ export default function AddFoodModal({
     }
   }, [visible, defaultMealType]);
 
+  /** Tìm kiếm món ăn theo từ khóa, debounce 300ms để tránh gọi API quá nhiều. */
   useEffect(() => {
     if (!visible) return;
     const timer = setTimeout(async () => {
@@ -88,6 +95,7 @@ export default function AddFoodModal({
     return () => clearTimeout(timer);
   }, [query, visible]);
 
+  /** Gọi API thêm món vào nhật ký, đóng modal và báo cho màn hình cha làm mới dữ liệu. */
   const performAdd = useCallback(async () => {
     if (!selectedFood) return;
     setSaving(true);
@@ -103,6 +111,7 @@ export default function AddFoodModal({
     }
   }, [selectedFood, userId, date, mealType, quantity, onAdded, onClose]);
 
+  /** Xử lý nút "Thêm vào nhật ký" — chặn thêm nếu khẩu phần đã chọn vượt mục tiêu calo. */
   const handleAdd = useCallback(async () => {
     if (!selectedFood) return;
     if (

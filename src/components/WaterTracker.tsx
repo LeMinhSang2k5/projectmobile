@@ -23,6 +23,9 @@ type Props = {
   compact?: boolean;
 };
 
+/**
+ * Thanh theo dõi nước uống — hiển thị tiến độ, nút +250/+500ml và kéo trực tiếp trên thanh để chỉnh lượng nước.
+ */
 export default function WaterTracker({
   waterMl,
   waterGoalMl,
@@ -44,6 +47,7 @@ export default function WaterTracker({
   const onDragStateChangeRef = useRef(onDragStateChange);
   const canDirectDragRef = useRef(false);
 
+  /** Đồng bộ ref với props mới nhất để PanResponder luôn dùng giá trị hiện tại khi kéo. */
   useEffect(() => {
     waterMlRef.current = waterMl;
     waterGoalMlRef.current = waterGoalMl;
@@ -61,6 +65,7 @@ export default function WaterTracker({
   const canDirectDrag = !!onSetWaterMl && waterGoalMl > 0;
   const thumbLeft = trackWidth > 0 ? Math.min((progress * trackWidth), trackWidth) : 0;
 
+  /** Đo vị trí và chiều rộng thanh tiến độ trên màn hình (cần cho tính toán khi kéo). */
   const measureTrack = (callback?: () => void) => {
     if (!trackRef.current) {
       callback?.();
@@ -77,6 +82,7 @@ export default function WaterTracker({
     });
   };
 
+  /** Chuyển tọa độ ngón tay thành lượng nước (ml), làm tròn theo bước 50ml và giới hạn trong mục tiêu. */
   const clampAndSnapMl = (pageX: number) => {
     const width = trackWidthRef.current;
     const goalMl = waterGoalMlRef.current;
@@ -89,6 +95,7 @@ export default function WaterTracker({
     return Math.max(0, Math.min(snappedMl, goalMl));
   };
 
+  /** Kết thúc kéo: xóa giá trị tạm và gọi `onSetWaterMl` nếu lượng nước thay đổi. */
   const commitDrag = (nextMl: number) => {
     setDragValueMl(null);
     onDragStateChangeRef.current?.(false);
