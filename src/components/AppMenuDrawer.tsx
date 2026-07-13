@@ -1,7 +1,6 @@
 /**
- * Menu drawer (3 gạch) — điều hướng tab và mở NotificationSettingsModal.
- * Mục "Thông báo": nhắc uống nước, nhắc tập, thông báo huy hiệu.
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5.2
+ * Menu drawer (3 gach) - dieu huong tab Home va cac tab khac.
+ * Mo thong bao, CMS (admin), dang xuat.
  */
 import React, { useEffect, useRef } from 'react';
 import {
@@ -45,6 +44,7 @@ type Props = {
   onSignOut: () => void;
 };
 
+/** Drawer menu ben trai - dieu huong ve tab Home va cac tab khac */
 export default function AppMenuDrawer({
   visible,
   activeTab,
@@ -59,6 +59,7 @@ export default function AppMenuDrawer({
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
+  /** Animation truot drawer tu trai */
   useEffect(() => {
     Animated.timing(slideAnim, {
       toValue: visible ? 0 : -300,
@@ -67,6 +68,7 @@ export default function AppMenuDrawer({
     }).start();
   }, [visible, slideAnim]);
 
+  /** Xac nhan truoc khi dang xuat */
   const handleSignOut = () => {
     Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
       { text: 'Hủy', style: 'cancel' },
@@ -81,6 +83,7 @@ export default function AppMenuDrawer({
     ]);
   };
 
+  /** Xu ly bam menu: chuyen tab, mo thong bao, admin, hoac sign out */
   const handleItemPress = (key: MenuItem['key']) => {
     onClose();
     if (key === 'signout') {

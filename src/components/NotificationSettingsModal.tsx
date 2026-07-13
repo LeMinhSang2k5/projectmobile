@@ -1,7 +1,7 @@
 /**
- * Modal cài đặt thông báo — bật/tắt nhắc nước, nhắc tập (+ chọn giờ), thông báo huy hiệu.
- * Mở từ nút chuông Dashboard hoặc menu 3 gạch > Thông báo.
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5.2, 5.4
+ * Modal cai dat thong bao.
+ * Mo tu nut chuong tren Dashboard hoac menu 3 gach > Thong bao.
+ * Bat/tat: nhac nuoc, nhac tap, thong bao huy hieu; doi gio nhac tap.
  */
 import React, { useEffect, useState } from 'react';
 import {
@@ -32,6 +32,7 @@ type Props = {
   onUpdated?: () => void;
 };
 
+/** Chuyen chuoi HH:mm thanh Date de hien DateTimePicker */
 function parseTime(value: string): Date {
   const [hourText, minuteText] = value.split(':');
   const date = new Date();
@@ -39,10 +40,12 @@ function parseTime(value: string): Date {
   return date;
 }
 
+/** Chuyen Date thanh chuoi HH:mm luu vao profile */
 function formatTime(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+/** Modal cai dat thong bao - mo tu nut chuong tren Dashboard */
 export default function NotificationSettingsModal({
   visible,
   userId,
@@ -54,6 +57,7 @@ export default function NotificationSettingsModal({
   const [saving, setSaving] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+  /** Tai prefs khi modal mo */
   useEffect(() => {
     if (!visible) return;
     setLoading(true);
@@ -65,6 +69,7 @@ export default function NotificationSettingsModal({
       .finally(() => setLoading(false));
   }, [visible, userId]);
 
+  /** Bat/tat tung loai thong bao va dong bo len server */
   const handleToggle = async (key: keyof NotificationPreferences, value: boolean) => {
     if (!prefs) return;
     setSaving(true);
@@ -79,6 +84,7 @@ export default function NotificationSettingsModal({
     }
   };
 
+  /** Luu gio nhac tap (wakeup_time) khi user chon tu DateTimePicker */
   const handleTimeChange = async (_event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') setShowTimePicker(false);
     if (!selected || !prefs) return;

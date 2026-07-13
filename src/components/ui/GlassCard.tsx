@@ -1,3 +1,7 @@
+/**
+ * Card nen kinh dung chung tren Dashboard.
+ * variant: default | accent (hero, badge dat) | flat (badge chua dat).
+ */
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { colors } from '../../theme/colors';
@@ -12,6 +16,7 @@ type Props = {
   padding?: number;
 };
 
+/** Wrapper card co vien, bo goc va highlight tren cung */
 export default function GlassCard({
   children,
   style,

@@ -1,7 +1,7 @@
 /**
- * Thẻ sức khỏe hôm nay trên Dashboard: giờ nhắc, calo nạp, nước, macro dinh dưỡng.
- * Tự tải dữ liệu riêng (không nằm trong RPC get_dashboard_summary).
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 3.1, 3.5
+ * The suc khoe hom nay tren Dashboard.
+ * Tu tai du lieu rieng: profile, dinh duong, nuoc (khong nam trong RPC dashboard).
+ * Cho phep them nuoc nhanh va chuyen sang tab Nutrition.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
@@ -29,6 +29,7 @@ type Props = {
   showStreak?: boolean;
 };
 
+/** Ghep cac the suc khoe: bao thuc, dinh duong, nuoc, macro */
 export default function StatsGrid({
   userId,
   onNavigateToNutrition,
@@ -40,6 +41,7 @@ export default function StatsGrid({
   const [water, setWater] = useState<DailyWaterIntake | null>(null);
   const [streak, setStreak] = useState(0);
 
+  /** Tai profile, dinh duong hom nay, nuoc hom nay; tuy chon streak */
   const fetchData = useCallback(async () => {
     try {
       const today = toLocalDateString();
@@ -68,6 +70,7 @@ export default function StatsGrid({
     fetchData();
   }, [fetchData]);
 
+  /** Them nuoc (+250/+500ml), tu dong gioi han khong vuot muc tieu */
   const handleAddWater = async (ml: number) => {
     const currentMl = water?.water_ml ?? 0;
     const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
@@ -106,6 +109,7 @@ export default function StatsGrid({
     await add(amountToAdd);
   };
 
+  /** Dat luong nuoc ve dung muc tieu hom nay (khi vuot muc tieu) */
   const handleSetWaterToGoal = async () => {
     const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
     try {

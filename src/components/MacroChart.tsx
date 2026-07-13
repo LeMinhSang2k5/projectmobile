@@ -1,3 +1,7 @@
+/**
+ * Bieu do dinh duong dung trong StatsGrid (Dashboard).
+ * CalorieRing: vong tron calo da nap. MacroChart: thanh dam/carbs/beo.
+ */
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -10,9 +14,7 @@ type Props = {
   size?: number;
 };
 
-/**
- * Vòng tròn tiến độ calo — hiển thị số calo đã nạp và phần trăm hoàn thành so với mục tiêu.
- */
+/** Vong tron tien do calo da nap / muc tieu */
 export function CalorieRing({ value, maxValue, sublabel = 'kcal', size = 120 }: Props) {
   const radius = size / 2 - 12;
   const circumference = 2 * Math.PI * radius;
@@ -63,16 +65,14 @@ type MacroProps = {
   fatGoal?: number;
 };
 
-/** Màu biểu diễn từng macro trên thanh và chú thích. */
+/** Mau tung macro tren thanh va chu thich */
 const MACRO_COLORS = {
   protein: '#c6f333',
   carbs: '#64b5f6',
   fat: '#ffb74d',
 };
 
-/**
- * Biểu đồ macro — thanh tỷ lệ đạm/tinh bột/chất béo và chú thích kèm mục tiêu, đánh dấu khi vượt ngưỡng.
- */
+/** Thanh ty le dam / carbs / beo + legend gram */
 export default function MacroChart({
   protein,
   carbs,

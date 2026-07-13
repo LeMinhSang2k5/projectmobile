@@ -37,11 +37,13 @@ const MemoLoginScreen = memo(LoginScreen);
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [isReady, setIsReady] = useState(false);
+  /** Tab mac dinh khi dang nhap; 'home' = DashboardScreen */
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [selectedWorkoutDate, setSelectedWorkoutDate] = useState<Date | undefined>(undefined);
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+  /** Tang sau khi hoan thanh buoi tap -> DashboardScreen reload du lieu */
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
   const [schemaIssue, setSchemaIssue] = useState<string | null>(null);
   const [accountStateVersion, setAccountStateVersion] = useState(0);
@@ -119,6 +121,7 @@ export default function App() {
     return () => { active = false; };
   }, [session?.user.id, accountStateVersion]);
 
+  /** Goi tu WorkoutDetailScreen; trigger refresh tab Home */
   const handleWorkoutCompleted = useCallback(() => {
     setDashboardRefreshKey(prev => prev + 1);
   }, []);
@@ -152,6 +155,7 @@ export default function App() {
     );
   }, [selectedProgramId, userId, handleWorkoutCompleted, selectedWorkoutDate]);
 
+  /** Chon man hinh theo tab; default 'home' -> DashboardScreen */
   const renderScreen = () => {
     if (!userId) return null;
     if (selectedProgramId) return workoutDetail;
@@ -165,6 +169,7 @@ export default function App() {
       case 'training':
         return <ProgramsScreen onSelectProgram={handleSelectProgram} refreshKey={dashboardRefreshKey} />;
       default:
+        // Tab Home: tong quan, chi so, buoi tap, suc khoe, huy hieu
         return <DashboardScreen userId={userId} refreshKey={dashboardRefreshKey} onNavigateToNutrition={() => setActiveTab('nutrition')} onNavigateToTraining={() => setActiveTab('training')} />;
     }
   };

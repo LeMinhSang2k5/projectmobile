@@ -1,3 +1,7 @@
+/**
+ * Theo doi luong nuoc hom nay - dung trong StatsGrid tren Dashboard.
+ * Hien thanh tien do, nut +250ml/+500ml; co keo truc tiep tren thanh.
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -23,9 +27,7 @@ type Props = {
   compact?: boolean;
 };
 
-/**
- * Thanh theo dõi nước uống — hiển thị tiến độ, nút +250/+500ml và kéo trực tiếp trên thanh để chỉnh lượng nước.
- */
+/** Hien thi ml da uong, tien do %, nut them nuoc; keo thanh de chinh truc tiep */
 export default function WaterTracker({
   waterMl,
   waterGoalMl,

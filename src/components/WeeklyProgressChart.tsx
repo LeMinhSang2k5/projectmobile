@@ -1,7 +1,7 @@
 /**
- * Biểu đồ cột hoạt động 7 ngày trên Dashboard.
- * Input: summary.weekly_workouts (đã chuẩn hóa). Empty state khi chưa có buổi tập nào.
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 3.3, 10.5
+ * Bieu do cot hoat dong 7 ngay tren Dashboard.
+ * Input: summary.weekly_workouts (da chuan hoa 7 ngay).
+ * Hien tong buoi tap, tong kcal va cot theo ngay.
  */
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -19,11 +19,13 @@ type Props = {
 const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const CHART_HEIGHT = 96;
 
+/** Chuyen date YYYY-MM-DD thanh nhan CN, T2, ... */
 function dayLabel(dateText: string): string {
   const date = new Date(`${normalizeDateString(dateText)}T12:00:00`);
   return DAY_LABELS[date.getDay()];
 }
 
+/** Tao 7 ngay rong (workouts=0) khi input khong du 7 phan tu */
 function buildFallbackDays(): WeeklyWorkoutDay[] {
   return Array.from({ length: 7 }, (_, index) => ({
     date: localDateDaysAgo(6 - index),
@@ -32,9 +34,10 @@ function buildFallbackDays(): WeeklyWorkoutDay[] {
   }));
 }
 
+/** Ve bieu do cot 7 ngay + tong ket buoi tap / kcal */
 export default function WeeklyProgressChart({ days }: Props) {
   const today = toLocalDateString();
-  // Luôn đủ 7 ngày; fallback nếu input sai độ dài
+  // Luon du 7 cot; fallback neu server tra ve sai do dai
   const chartDays = useMemo(
     () => (days.length === 7 ? days : buildFallbackDays()),
     [days],
@@ -42,7 +45,7 @@ export default function WeeklyProgressChart({ days }: Props) {
 
   const totalWorkouts = chartDays.reduce((sum, day) => sum + day.workouts, 0);
   const totalCalories = chartDays.reduce((sum, day) => sum + day.calories_burned, 0);
-  // Tối thiểu 1 để tránh chia cho 0 khi tính chiều cao cột
+  // Toi thieu 1 de tranh chia cho 0 khi tinh chieu cao cot
   const maxWorkouts = Math.max(...chartDays.map((day) => day.workouts), 1);
   const hasActivity = totalWorkouts > 0;
 
@@ -74,7 +77,7 @@ export default function WeeklyProgressChart({ days }: Props) {
         {chartDays.map((day) => {
           const isToday = normalizeDateString(day.date) === today;
           const active = day.workouts > 0;
-          // Ngày có tập: cột tỉ lệ workouts/maxWorkouts (tối thiểu 12px). Không tập: chấm nhỏ.
+          // Cot cao theo ty le workouts/maxWorkouts; ngay khong tap hien cham nho
           const fillHeight = active
             ? Math.max(12, (day.workouts / maxWorkouts) * CHART_HEIGHT)
             : 0;

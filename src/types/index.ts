@@ -206,6 +206,17 @@ export type DashboardSummary = {
   badge_notifications_enabled: boolean;
 };
 
+/** Dữ liệu thẻ buổi tập trên Dashboard — từ khóa tập active hoặc chương trình gần nhất. */
+export type WorkoutCardSummary = {
+  title: string;
+  subtitle: string;
+  progressPercent: number | null;
+  sessionsCompleted: number;
+  totalSessions: number | null;
+  remainingLabel: string | null;
+  thumbnailUrl: string | null;
+};
+
 export type NotificationPreferences = {
   water_reminder_enabled: boolean;
   workout_reminder_enabled: boolean;

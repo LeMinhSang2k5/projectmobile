@@ -1,3 +1,7 @@
+/**
+ * Header tren cung khi o tab Home (va cac tab khac).
+ * Menu 3 gach, logo, avatar -> Profile.
+ */
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +15,7 @@ type Props = {
   onMenuPress?: () => void;
 };
 
+/** Thanh header co safe area, nut menu va avatar */
 export default function Header({ avatarUrl, onAvatarPress, onMenuPress }: Props) {
   const insets = useSafeAreaInsets();
 

@@ -1,3 +1,7 @@
+/**
+ * Bottom tab bar - tab Home la DashboardScreen.
+ * Tu dong an khi scroll den cuoi (qua BottomNavContext).
+ */
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,11 +24,13 @@ const NAV_ITEMS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap; label: s
   { key: 'profile', icon: 'person', label: 'Profile' },
 ];
 
+/** 4 tab: Home, Training, Nutrition, Profile */
 export default function BottomNav({ activeTab, onTabChange }: Props) {
   const insets = useSafeAreaInsets();
   const { isBottomNavHidden } = useBottomNav();
   const translateY = useRef(new Animated.Value(0)).current;
 
+  /** An/hien tab bar bang animation translateY */
   useEffect(() => {
     Animated.timing(translateY, {
       toValue: isBottomNavHidden ? 200 : 0, // 200 ensures it is completely off screen

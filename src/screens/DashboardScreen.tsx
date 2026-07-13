@@ -1,7 +1,7 @@
 /**
- * Man hinh tab Home (Dashboard) — Tang 1 (giao dien).
- * Hien thi: chi so nhanh, bieu do 7 ngay, buoi tap, suc khoe hom nay, huy hieu.
- * Khong goi database truc tiep — luon qua dashboardService, badgeService, notificationService.
+ * Man hinh tab Home (Dashboard) - Tang 1 giao dien.
+ * Hien thi: hero chao user, chi so nhanh, bieu do 7 ngay, buoi tap, suc khoe, huy hieu.
+ * Du lieu lay qua service (dashboardService, courseService, badgeService, notificationService).
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -24,22 +24,26 @@ import NotificationSettingsModal from '../components/NotificationSettingsModal';
 import GlassCard from '../components/ui/GlassCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import { getDashboardSummary } from '../services/dashboardService';
+import { getWorkoutCardSummary } from '../services/courseService';
 import { syncUserBadges } from '../services/badgeService';
 import {
   getNotificationPreferences,
   notifyBadgeEarned,
 } from '../services/notificationService';
 import { useHideOnScroll } from '../hooks/useHideOnScroll';
-import type { BadgeWithStatus, DashboardSummary } from '../types';
+import type { BadgeWithStatus, DashboardSummary, WorkoutCardSummary } from '../types';
 
 type Props = {
   userId: string;
-  refreshKey?: number; // App.tsx tang sau khi hoan thanh buoi tap -> trigger reload
+  /** App.tsx tang sau khi hoan thanh buoi tap de reload du lieu Home */
+  refreshKey?: number;
+  /** Chuyen sang tab Nutrition khi bam "Chi tiet" */
   onNavigateToNutrition?: () => void;
+  /** Chuyen sang tab Training khi bam the buoi tap hoac "Xem tat ca" */
   onNavigateToTraining?: () => void;
 };
 
-/** Mot o trong luoi "Chi so nhanh" (streak, calo dot, buoi tap, ky luc). */
+/** Mot o trong luoi Chi so nhanh: streak, calo dot, buoi tap, ky luc */
 type StatItem = {
   key: string;
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -48,6 +52,7 @@ type StatItem = {
   wide?: boolean;
 };
 
+/** Man hinh chinh tab Home - ghep cac section va dieu phoi tai du lieu */
 export default function DashboardScreen({
   userId,
   refreshKey = 0,
@@ -55,28 +60,34 @@ export default function DashboardScreen({
   onNavigateToTraining,
 }: Props) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [workoutCard, setWorkoutCard] = useState<WorkoutCardSummary | null>(null);
   const [badges, setBadges] = useState<BadgeWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const handleScroll = useHideOnScroll(); // an/hien bottom tab khi scroll
+  /** An bottom tab khi scroll den cuoi danh sach */
+  const handleScroll = useHideOnScroll();
 
   /**
-   * Ham trung tam tai Dashboard: 3 request song song (summary, badge, prefs).
-   * refreshKey (tu App.tsx) tang sau khi hoan thanh buoi tap -> useEffect goi lai ham nay.
-   * Luu y: lan load dau previous badges = [] nen co the ban lai thong bao badge cu.
+   * Tai toan bo du lieu Home song song:
+   * - summary: streak, calo, buoi tap, bieu do 7 ngay
+   * - workoutSummary: khoa tap / chuong trinh gan nhat cho WorkoutCard
+   * - badgeList: dong bo va cap huy hieu
+   * - prefs: cai dat thong bao (de biet co gui alert badge moi khong)
    */
   const loadDashboard = useCallback(async () => {
     try {
-      const [dashboard, badgeList, prefs] = await Promise.all([
+      const [dashboard, workoutSummary, badgeList, prefs] = await Promise.all([
         getDashboardSummary(userId),
-        syncUserBadges(userId), // dong bo + cap huy hieu moi truoc khi hien thi
+        getWorkoutCardSummary(userId),
+        syncUserBadges(userId),
         getNotificationPreferences(userId).catch(() => null),
       ]);
 
       setSummary(dashboard);
+      setWorkoutCard(workoutSummary);
       setBadges((previous) => {
-        // Chi thong bao badge moi neu user bat badge_notifications_enabled
+        // Chi push thong bao khi user bat badge_notifications_enabled
         if (prefs?.badge_notifications_enabled) {
           const previousEarned = new Set(
             previous.filter((badge) => badge.earned).map((badge) => badge.id),
@@ -97,20 +108,20 @@ export default function DashboardScreen({
     }
   }, [userId]);
 
-  // Load lan dau + reload khi refreshKey doi (sau buoi tap)
+  /** Load lan dau va reload khi refreshKey doi (sau buoi tap) */
   useEffect(() => {
     setLoading(true);
     void loadDashboard().finally(() => setLoading(false));
   }, [loadDashboard, refreshKey]);
 
-  // Keo xuong de refresh (pull-to-refresh)
+  /** Keo xuong de refresh toan bo du lieu Home */
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDashboard();
     setRefreshing(false);
   }, [loadDashboard]);
 
-  // Man hinh loading chi hien khi chua co summary (lan dau)
+  /** Spinner chi hien lan load dau, chua co summary */
   if (loading && !summary) {
     return (
       <View style={styles.loadingContainer}>
@@ -127,7 +138,7 @@ export default function DashboardScreen({
     month: 'long',
   });
 
-  // 4 chi so: streak hien tai, calo dot hom nay, so buoi tap, ky luc streak
+  /** 4 chi so nhanh: streak, calo dot hom nay, so buoi tap, ky luc streak */
   const statItems: StatItem[] = [
     {
       key: 'streak',
@@ -227,17 +238,17 @@ export default function DashboardScreen({
         <SectionHeader title="Hoạt động 7 ngày" />
         <WeeklyProgressChart days={summary?.weekly_workouts ?? []} />
 
-        {/* WorkoutCard hardcoded — bam de chuyen tab Training */}
+        {/* WorkoutCard: khoa tap active hoac chuong trinh gan nhat */}
         <SectionHeader
           title="Buổi tập"
           actionLabel="Xem tất cả"
           onAction={onNavigateToTraining}
         />
         <TouchableOpacity activeOpacity={0.92} onPress={onNavigateToTraining}>
-          <WorkoutCard />
+          <WorkoutCard data={workoutCard} loading={loading && !workoutCard} />
         </TouchableOpacity>
 
-        {/* StatsGrid tu tai nutrition + water hom nay (goi service rieng) */}
+        {/* StatsGrid: tu tai nutrition + water hom nay */}
         <SectionHeader
           title="Sức khỏe hôm nay"
           actionLabel="Chi tiết"
@@ -250,7 +261,7 @@ export default function DashboardScreen({
           showStreak={false}
         />
 
-        {/* BadgeGrid — badges da sync qua syncUserBadges trong loadDashboard */}
+        {/* BadgeGrid: huy hieu da sync qua syncUserBadges */}
         <SectionHeader
           title="Huy hiệu"
           subtitle={`${badges.filter((b) => b.earned).length}/${badges.length} đã mở khóa`}
@@ -258,7 +269,7 @@ export default function DashboardScreen({
         <BadgeGrid badges={badges} />
       </ScrollView>
 
-      {/* Modal cai dat nho nuoc / nho tap / thong bao huy hieu */}
+      {/* Modal: nho nuoc, nho tap, thong bao huy hieu */}
       <NotificationSettingsModal
         visible={settingsVisible}
         userId={userId}

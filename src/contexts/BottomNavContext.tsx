@@ -1,3 +1,7 @@
+/**
+ * Context dieu khien an/hien BottomNav khi scroll Home.
+ * DashboardScreen dung useHideOnScroll de set isBottomNavHidden.
+ */
 import { createContext, useContext } from 'react';
 
 export type BottomNavContextType = {
@@ -10,6 +14,7 @@ export const BottomNavContext = createContext<BottomNavContextType>({
   setBottomNavHidden: () => {},
 });
 
+/** Doc context an/hien bottom tab */
 export function useBottomNav() {
   return useContext(BottomNavContext);
 }

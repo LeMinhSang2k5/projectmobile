@@ -1,3 +1,7 @@
+/**
+ * Tieu de section tren Dashboard (vd: Chi so nhanh, Buoi tap).
+ * Co the kem subtitle va nut hanh dong ben phai (Xem tat ca).
+ */
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -11,6 +15,7 @@ type Props = {
   onAction?: () => void;
 };
 
+/** Hien thi title + optional action link */
 export default function SectionHeader({ title, subtitle, actionLabel, onAction }: Props) {
   return (
     <View style={styles.row}>

@@ -1,6 +1,6 @@
 /**
- * Lưới huy hiệu trên Dashboard — badge đã đạt sáng, chưa đạt mờ (opacity 0.65).
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 4.1, 4.5
+ * Luoi huy hieu tren Dashboard.
+ * Badge da dat: sang + variant accent. Chua dat: mo (opacity 0.65).
  */
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -14,6 +14,7 @@ type Props = {
   badges: BadgeWithStatus[];
 };
 
+/** Hien thi danh sach badge 2 cot; du lieu da sync tu badgeService */
 export default function BadgeGrid({ badges }: Props) {
   return (
     <View style={styles.grid}>

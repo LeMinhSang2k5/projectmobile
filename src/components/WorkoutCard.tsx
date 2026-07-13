@@ -1,18 +1,55 @@
 /**
- * Thẻ buổi tập trên Dashboard — dữ liệu trình diễn cố định (hard-code).
- * Chưa đọc chương trình hiện tại từ database.
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 3.1, 3.5
+ * The buoi tap tren Dashboard.
+ * Nhan du lieu tu courseService (khoa tap active hoac chuong trinh gan nhat).
+ * 3 trang thai: loading, empty, hien thi day du.
  */
 import React from 'react';
-import { View, Text, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, ActivityIndicator, type DimensionValue } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import type { WorkoutCardSummary } from '../types';
 
-export default function WorkoutCard() {
+const DEFAULT_THUMBNAIL =
+  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80';
+
+type Props = {
+  /** Du lieu khoa tap / chuong trinh; null = chua co buoi tap */
+  data: WorkoutCardSummary | null;
+  /** true khi dang goi API lan dau */
+  loading?: boolean;
+};
+
+/** Hien thi the buoi tap: loading, empty, hoac noi dung that */
+export default function WorkoutCard({ data, loading = false }: Props) {
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.stateContainer]}>
+        <ActivityIndicator size="small" color={colors.primaryFixed} />
+        <Text style={styles.stateText}>Đang tải buổi tập...</Text>
+      </View>
+    );
+  }
+
+  if (!data) {
+    return (
+      <View style={[styles.container, styles.stateContainer]}>
+        <MaterialIcons name="fitness-center" size={32} color={colors.onSurfaceVariant} />
+        <Text style={styles.emptyTitle}>Chưa có buổi tập nào</Text>
+        <Text style={styles.stateText}>Chọn một chương trình tập để bắt đầu hành trình của bạn.</Text>
+      </View>
+    );
+  }
+
+  const progressWidth =
+    data.progressPercent != null
+      ? (`${data.progressPercent}%` as DimensionValue)
+      : undefined;
+
   return (
     <View style={styles.container}>
-      <ImageBackground 
-        source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAmaPwkrbC-08dreODBP8rkWKHwDL0ZFk0MrYB7kTi_5V5lEwTgCWX3JGMD9W2CdYdpeXNYec48P8lNIEBMZeOpX-uodL6-6jhm61C3RIzKs_mSQu8ac9Ujt2BMfSLtjM9HhiH1qrLVpwOpTEm0f0Lqe1OWJ3ykvid8oJBk_5oNa34MQYaezooERr6IHkXUhYikvYKEChc6djgEf_eAylrOIsOiLiPqhFUy65erKdWFWbBwMDBQ7KmwT3wwdQKHRL_v8_RS82dMnZ8' }}
+      <ImageBackground
+        source={{ uri: data.thumbnailUrl ?? DEFAULT_THUMBNAIL }}
         style={styles.imageBackground}
         imageStyle={{ opacity: 0.5 }}
       >
@@ -24,18 +61,28 @@ export default function WorkoutCard() {
             <View style={styles.badge}>
               <Text style={styles.badgeText}>KHÓA TẬP HIỆN TẠI</Text>
             </View>
-            <Text style={styles.title}>Power Strength II</Text>
-            <Text style={styles.subtitle}>Buổi 12 / 24 • Thân trên</Text>
+            <Text style={styles.title}>{data.title}</Text>
+            <Text style={styles.subtitle}>{data.subtitle}</Text>
           </View>
-          
+
           <View style={styles.bottomSection}>
             <View style={styles.progressTextRow}>
-              <Text style={styles.progressTextHighlight}>50% Hoàn thành</Text>
-              <Text style={styles.progressTextSub}>12 ngày còn lại</Text>
+              {data.progressPercent != null ? (
+                <Text style={styles.progressTextHighlight}>{data.progressPercent}% Hoàn thành</Text>
+              ) : (
+                <Text style={styles.progressTextHighlight}>
+                  {data.sessionsCompleted} buổi đã tập
+                </Text>
+              )}
+              {data.remainingLabel ? (
+                <Text style={styles.progressTextSub}>{data.remainingLabel}</Text>
+              ) : null}
             </View>
-            <View style={styles.progressBarBg}>
-              <View style={styles.progressBarFill} />
-            </View>
+            {data.progressPercent != null ? (
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: progressWidth }]} />
+              </View>
+            ) : null}
           </View>
         </LinearGradient>
       </ImageBackground>
@@ -52,6 +99,25 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
     borderWidth: 1,
   },
+  stateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  stateText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    color: colors.onSurface,
+    marginTop: 4,
+  },
   imageBackground: {
     width: '100%',
     height: '100%',
@@ -61,8 +127,7 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'space-between',
   },
-  topSection: {
-  },
+  topSection: {},
   badge: {
     backgroundColor: colors.primaryContainer,
     paddingHorizontal: 12,
@@ -89,8 +154,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.onSurfaceVariant,
   },
-  bottomSection: {
-  },
+  bottomSection: {},
   progressTextRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -116,12 +180,11 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: colors.primaryFixed,
-    width: '50%',
     borderRadius: 999,
     shadowColor: colors.primaryFixed,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 5,
-  }
+  },
 });
