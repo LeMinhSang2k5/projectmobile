@@ -1,7 +1,7 @@
 /**
- * Service Dashboard — Tầng 2 (nghiệp vụ).
- * Lấy số liệu tổng quan tab Home: streak, calo, buổi tập, biểu đồ 7 ngày, cờ nhắc nhở.
- * Ưu tiên RPC `get_dashboard_summary()`; nếu lỗi thì fallback đọc từng bảng trên client.
+ * Service Dashboard — Tang 2 (nghiep vu).
+ * Lay so lieu tong quan tab Home: streak, calo, buoi tap, bieu do 7 ngay, co nho nho.
+ * Uu tien RPC `get_dashboard_summary()`; neu loi thi fallback doc tung bang tren client.
  */
 import { supabase } from '../../utils/supabase';
 import { getProfile } from './healthService';
@@ -14,14 +14,15 @@ import type { DashboardSummary, WeeklyWorkoutDay } from '../types';
 export { normalizeWeeklyWorkouts };
 
 /**
- * Fallback client khi RPC `get_dashboard_summary` lỗi hoặc chưa có migration.
- * Gom song song 3 nguồn: profiles, user_streaks, workout_sessions (7 ngày gần nhất).
- * userId chỉ dùng ở đây — RPC tự lấy user từ JWT qua auth.uid().
+ * Fallback client khi RPC `get_dashboard_summary` loi hoac chua co migration.
+ * Gom song song 3 nguon: profiles, user_streaks, workout_sessions (7 ngay gan nhat).
+ * userId chi dung o day — RPC tu lay user tu JWT qua auth.uid().
  */
 async function buildDashboardSummaryClient(userId: string): Promise<DashboardSummary> {
   const today = toLocalDateString();
-  const weekStart = localDateDaysAgo(6);
+  const weekStart = localDateDaysAgo(6); // 7 ngay: hom nay + 6 ngay truoc
 
+  // 3 query song song: profile, streak, buoi tap trong tuan
   const [profile, streakResult, sessionsResult] = await Promise.all([
     getProfile(userId),
     supabase
@@ -37,11 +38,13 @@ async function buildDashboardSummaryClient(userId: string): Promise<DashboardSum
       .lte('workout_date', today),
   ]);
 
+  // Khoi tao map 7 ngay rong (workouts=0, calories_burned=0) de bieu do luon du cot
   const weeklyMap = new Map<string, WeeklyWorkoutDay>();
   for (const day of buildEmptyWeekly()) {
     weeklyMap.set(day.date, { ...day });
   }
 
+  // Cong don so buoi tap va calo dot vao tung ngay trong map
   for (const session of sessionsResult.data ?? []) {
     const date = normalizeDateString(session.workout_date);
     const existing = weeklyMap.get(date);
@@ -50,6 +53,7 @@ async function buildDashboardSummaryClient(userId: string): Promise<DashboardSum
     existing.calories_burned += Number(session.total_calories ?? 0);
   }
 
+  // Loc buoi tap hom nay de tinh tong calo dot + so buoi tap trong ngay
   const todaySessions = (sessionsResult.data ?? []).filter((row) => row.workout_date === today);
 
   return {
@@ -62,6 +66,7 @@ async function buildDashboardSummaryClient(userId: string): Promise<DashboardSum
     ),
     workouts_today: todaySessions.length,
     weekly_workouts: Array.from(weeklyMap.values()),
+    // Co nho nho doc tu profile — NotificationSettingsModal dung de hien trang thai
     wakeup_time: profile?.wakeup_time ?? '06:30',
     water_reminder_enabled: profile?.water_reminder_enabled ?? false,
     workout_reminder_enabled: profile?.workout_reminder_enabled ?? false,
@@ -70,8 +75,10 @@ async function buildDashboardSummaryClient(userId: string): Promise<DashboardSum
 }
 
 /**
- * Lấy toàn bộ số liệu Dashboard trong một lần gọi.
- * Sau RPC, chuẩn hóa weekly_workouts để biểu đồ luôn có đủ 7 ngày theo timezone thiết bị.
+ * Lay toan bo so lieu Dashboard trong mot lan goi.
+ * Duong chinh: RPC `get_dashboard_summary` (server gom tat ca, bao mat qua auth.uid()).
+ * Duong phu: buildDashboardSummaryClient khi RPC fail.
+ * Sau RPC, chuan hoa weekly_workouts de bieu do luon co du 7 ngay theo timezone thiet bi.
  */
 export async function getDashboardSummary(userId: string): Promise<DashboardSummary> {
   const { data, error } = await supabase.rpc('get_dashboard_summary');
@@ -86,7 +93,10 @@ export async function getDashboardSummary(userId: string): Promise<DashboardSumm
   return buildDashboardSummaryClient(userId);
 }
 
-/** Snapshot dinh dưỡng + nước hôm nay (dùng cho StatsGrid / thẻ sức khỏe). */
+/**
+ * Snapshot dinh duong + nuoc hom nay (dung cho StatsGrid / the suc khoe).
+ * Goi song song getDailyNutrition va getTodayWater sau khi lay profile.
+ */
 export async function getTodayNutritionSnapshot(userId: string) {
   const today = toLocalDateString();
   const profile = await getProfile(userId);

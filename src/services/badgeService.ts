@@ -1,7 +1,8 @@
 /**
- * Service Huy hiệu — đồng bộ và cấp badge tự động mỗi lần mở Dashboard.
- * Luồng: loadBadgeStats → isBadgeEarned → INSERT user_badges → getBadgesWithStatus.
- * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 4, 10.7–10.8
+ * Service Huy hieu — dong bo va cap badge tu dong moi lan mo Dashboard.
+ * Luong: loadBadgeStats -> isBadgeEarned -> INSERT user_badges -> getBadgesWithStatus.
+ * 8 huy hieu mac dinh: Khoi dau, Buoi tap dau, Kien tri 3/7/30 ngay, Hydration Pro,
+ * Dinh duong chuan, Dot chay (>= 500 kcal/ngay).
  */
 import { supabase } from '../../utils/supabase';
 import { getProfile, getCalorieGoal, getWaterGoalMl } from './healthService';
@@ -12,6 +13,7 @@ import { FALLBACK_BADGES } from '../lib/badgeCatalog';
 import { isBadgeEarned } from '../lib/badgeCalculations';
 import type { Badge, BadgeWithStatus } from '../types';
 
+/** Thong ke user dung de so sanh voi criteria_type/criteria_value cua tung badge. */
 type BadgeStats = {
   onboardingComplete: boolean;
   workoutSessions: number;
@@ -22,8 +24,8 @@ type BadgeStats = {
 };
 
 /**
- * Gom một lần tất cả thống kê cần để kiểm tra 8 huy hiệu mặc định.
- * Hôm nay tính riêng qua getDailyNutrition/getTodayWater vì có thể chưa có dòng trong bảng daily.
+ * Gom mot lan tat ca thong ke can de kiem tra 8 huy hieu mac dinh.
+ * Hom nay tinh rieng qua getDailyNutrition/getTodayWater vi co the chua co dong trong bang daily.
  */
 async function loadBadgeStats(userId: string): Promise<BadgeStats> {
   const today = toLocalDateString();
@@ -31,6 +33,7 @@ async function loadBadgeStats(userId: string): Promise<BadgeStats> {
   const calorieGoal = getCalorieGoal(profile);
   const waterGoalMl = getWaterGoalMl(profile);
 
+  // 5 query song song: streak, tong buoi tap, lich su nuoc/calo, calo dot theo ngay
   const [
     streakResult,
     workoutCountResult,
@@ -58,18 +61,21 @@ async function loadBadgeStats(userId: string): Promise<BadgeStats> {
   const todayNutritionMet =
     (todayNutrition?.calories_consumed ?? 0) >= calorieGoal && calorieGoal > 0;
 
+  // Dem ngay dat muc tieu nuoc: lich su + hom nay (neu dat)
   const waterGoalDays =
     (waterRows.data ?? []).filter((row) => {
-      if (row.date === today) return false;
+      if (row.date === today) return false; // hom nay tinh rieng ben duoi
       const goal = row.water_goal_ml ?? waterGoalMl;
       return row.water_ml >= goal && goal > 0;
     }).length + (todayWaterMet ? 1 : 0);
 
+  // Dem ngay dat muc tieu calo an (so voi muc tieu calo hien tai cua profile)
   const nutritionGoalDays =
     (nutritionRows.data ?? []).filter(
       (row) => row.date !== today && row.calories_consumed >= calorieGoal && calorieGoal > 0,
     ).length + (todayNutritionMet ? 1 : 0);
 
+  // Gom calo dot theo workout_date, lay max de kiem tra badge "Dot chay" (>= 500)
   const burnByDay = new Map<string, number>();
   for (const row of burnRows.data ?? []) {
     const current = burnByDay.get(row.workout_date) ?? 0;
@@ -90,7 +96,10 @@ async function loadBadgeStats(userId: string): Promise<BadgeStats> {
   };
 }
 
-/** Trả danh sách badge kèm trạng thái earned/earned_at (đọc từ bảng user_badges). */
+/**
+ * Tra danh sach badge kem trang thai earned/earned_at.
+ * Nguon: bang badges + user_badges; fallback 4 badge neu khong tai duoc catalog tu server.
+ */
 export async function getBadgesWithStatus(userId: string): Promise<BadgeWithStatus[]> {
   const [{ data: badges, error: badgesError }, { data: earned }] = await Promise.all([
     supabase.from('badges').select('*').order('sort_order', { ascending: true }),
@@ -102,6 +111,7 @@ export async function getBadgesWithStatus(userId: string): Promise<BadgeWithStat
 
   const catalog = badgesError || !badges?.length ? FALLBACK_BADGES : (badges as Badge[]);
 
+  // Fallback: khong co bang badges -> tinh earned tu stats, khong co earned_at
   if (badgesError || !badges?.length) {
     const stats = await loadBadgeStats(userId);
     return catalog.map((badge) => ({
@@ -115,6 +125,7 @@ export async function getBadgesWithStatus(userId: string): Promise<BadgeWithStat
     (earned ?? []).map((row) => [row.badge_id, row.earned_at as string]),
   );
 
+  // Binh thuong: earned = da co trong user_badges (unique user_id + badge_id)
   return catalog.map((badge) => ({
     ...badge,
     earned: earnedMap.has(badge.id),
@@ -123,8 +134,9 @@ export async function getBadgesWithStatus(userId: string): Promise<BadgeWithStat
 }
 
 /**
- * Đồng bộ huy hiệu: kiểm tra điều kiện, INSERT badge mới vào user_badges.
- * Bỏ qua lỗi 23505 (unique constraint) khi hai lần sync đồng thời cùng insert.
+ * Dong bo huy hieu — goi tu DashboardScreen moi lan load/refresh.
+ * Badge du dieu kien ma chua co trong user_badges -> INSERT.
+ * Bo qua loi 23505 (unique constraint) khi hai lan sync dong thoi cung insert.
  */
 export async function syncUserBadges(userId: string): Promise<BadgeWithStatus[]> {
   const [{ data: badges, error: badgesError }, stats, { data: earned }] = await Promise.all([
@@ -138,6 +150,7 @@ export async function syncUserBadges(userId: string): Promise<BadgeWithStatus[]>
   }
 
   const earnedIds = new Set((earned ?? []).map((row) => row.badge_id));
+  // Chua co trong DB VA isBadgeEarned() = true -> cap moi
   const toAward = (badges as Badge[]).filter(
     (badge) => !earnedIds.has(badge.id) && isBadgeEarned(badge, stats),
   );
@@ -149,6 +162,7 @@ export async function syncUserBadges(userId: string): Promise<BadgeWithStatus[]>
         badge_id: badge.id,
       })),
     );
+    // 23505 = duplicate key — hai request sync song song cung insert mot badge
     if (error && error.code !== '23505') {
       console.warn('syncUserBadges insert error:', error.message);
     }

@@ -1,10 +1,10 @@
 /**
  * Service Thông báo — nhắc tập, prefs, thông báo huy hiệu mới.
- * Lazy-load expo-notifications; trên Expo Go trả null để không crash.
+ * Lazy-load expo-notifications; trên Expo Go dùng Alert in-app (giống nhắc nước).
  * Cờ bật/tắt lưu profiles; id lịch local lưu AsyncStorage.
  * @see docs/pdf/dac_ta_ky_thuat_de_hieu.pdf — mục 5, 10.9–10.11
  */
-import { Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { supabase } from '../../utils/supabase';
@@ -23,6 +23,12 @@ const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let notificationsModule: NotificationsModule | null | undefined;
+let inAppWorkoutInterval: ReturnType<typeof setInterval> | null = null;
+let inAppWorkoutTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastInAppWorkoutKey: string | null = null;
+let inAppWorkoutActive = false;
+let inAppWorkoutTarget: { hour: number; minute: number } = { hour: 6, minute: 30 };
+let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
 
 function isNotificationGranted(
   perm: Awaited<ReturnType<NotificationsModule['getPermissionsAsync']>>
@@ -82,8 +88,104 @@ function parseWakeupTime(value: string): { hour: number; minute: number } {
   return { hour, minute };
 }
 
+/** Expo Go: Alert trong app khi dung gio wakeup_time (chi khi app dang mo). */
+function isAtWorkoutReminderTime(now: Date = new Date()): boolean {
+  return (
+    now.getHours() === inAppWorkoutTarget.hour &&
+    now.getMinutes() === inAppWorkoutTarget.minute
+  );
+}
+
+function getWorkoutReminderDayKey(now: Date): string {
+  const date = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+  return `${date}-${inAppWorkoutTarget.hour}-${inAppWorkoutTarget.minute}`;
+}
+
+function getMsUntilNextWorkoutReminder(): number {
+  const now = new Date();
+  const next = new Date(now);
+  next.setSeconds(0, 0);
+  next.setHours(inAppWorkoutTarget.hour, inAppWorkoutTarget.minute, 0, 0);
+  if (next.getTime() <= now.getTime()) {
+    next.setDate(next.getDate() + 1);
+  }
+  return next.getTime() - now.getTime();
+}
+
+function showWorkoutReminderAlert(): void {
+  Alert.alert(
+    'Giờ tập luyện 💪',
+    'Đã đến giờ tập! Hãy bắt đầu buổi tập của bạn ngay hôm nay.',
+  );
+}
+
+function checkInAppWorkoutReminder(): void {
+  if (!isAtWorkoutReminderTime()) return;
+  const key = getWorkoutReminderDayKey(new Date());
+  if (key === lastInAppWorkoutKey) return;
+  lastInAppWorkoutKey = key;
+  showWorkoutReminderAlert();
+}
+
+function scheduleNextInAppWorkoutTimeout(): void {
+  if (inAppWorkoutTimeout) {
+    clearTimeout(inAppWorkoutTimeout);
+    inAppWorkoutTimeout = null;
+  }
+  if (!inAppWorkoutActive) return;
+
+  const ms = getMsUntilNextWorkoutReminder();
+  inAppWorkoutTimeout = setTimeout(() => {
+    inAppWorkoutTimeout = null;
+    checkInAppWorkoutReminder();
+    if (inAppWorkoutActive) {
+      scheduleNextInAppWorkoutTimeout();
+    }
+  }, ms);
+}
+
+function ensureWorkoutAppStateListener(): void {
+  if (appStateSubscription) return;
+  appStateSubscription = AppState.addEventListener('change', (state) => {
+    if (state === 'active' && inAppWorkoutActive) {
+      scheduleNextInAppWorkoutTimeout();
+      checkInAppWorkoutReminder();
+    }
+  });
+}
+
+function startInAppWorkoutReminders(wakeupTime: string): void {
+  stopInAppWorkoutReminders();
+  inAppWorkoutTarget = parseWakeupTime(wakeupTime);
+  inAppWorkoutActive = true;
+  ensureWorkoutAppStateListener();
+  checkInAppWorkoutReminder();
+  scheduleNextInAppWorkoutTimeout();
+  // Backup moi 15s — tranh bo lo phut do setInterval 60s lech pha
+  inAppWorkoutInterval = setInterval(checkInAppWorkoutReminder, 15 * 1000);
+}
+
+function stopInAppWorkoutReminders(): void {
+  inAppWorkoutActive = false;
+  lastInAppWorkoutKey = null;
+  if (inAppWorkoutTimeout) {
+    clearTimeout(inAppWorkoutTimeout);
+    inAppWorkoutTimeout = null;
+  }
+  if (inAppWorkoutInterval) {
+    clearInterval(inAppWorkoutInterval);
+    inAppWorkoutInterval = null;
+  }
+}
+
+export function isInAppWorkoutReminderMode(): boolean {
+  return isExpoGo && inAppWorkoutActive;
+}
+
 /** Hủy lịch nhắc tập cũ trước khi đặt lịch mới (tránh trùng). Id lưu AsyncStorage. */
 async function cancelWorkoutReminder(): Promise<void> {
+  stopInAppWorkoutReminders();
+
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
@@ -96,6 +198,11 @@ async function cancelWorkoutReminder(): Promise<void> {
 
 /** Lập lịch nhắc tập hàng ngày đúng giờ wakeup_time (trigger CALENDAR, repeats: true). */
 async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
+  if (isExpoGo) {
+    startInAppWorkoutReminders(wakeupTime);
+    return;
+  }
+
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
@@ -120,6 +227,7 @@ async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
   await AsyncStorage.setItem(WORKOUT_REMINDER_ID_KEY, id);
 }
 
+/** true = hỗ trợ push OS; Expo Go dùng Alert in-app thay thế. */
 export function isNotificationSupported(): boolean {
   return !isExpoGo;
 }
@@ -147,6 +255,7 @@ export async function getNotificationPreferences(
 /**
  * Cập nhật cài đặt nhắc nhở: lập lịch trên máy trước, sau đó ghi cờ lên profiles.
  * Không phải transaction — nếu update Supabase thất bại, lịch local và cờ server có thể lệch.
+ * Expo Go: nhắc tập dùng Alert in-app theo wakeup_time (chỉ khi app đang mở).
  */
 export async function updateNotificationPreferences(
   userId: string,
@@ -155,12 +264,6 @@ export async function updateNotificationPreferences(
   const current = await getNotificationPreferences(userId);
   const next: NotificationPreferences = { ...current, ...prefs };
 
-  if (isExpoGo && prefs.workout_reminder_enabled === true) {
-    throw new Error(
-      'Nhắc tập luyện không khả dụng trên Expo Go. Hãy dùng development build để bật thông báo.',
-    );
-  }
-
   if (prefs.water_reminder_enabled === true) {
     await enableWaterReminders(userId);
   } else if (prefs.water_reminder_enabled === false) {
@@ -168,21 +271,25 @@ export async function updateNotificationPreferences(
   }
 
   if (prefs.workout_reminder_enabled === true) {
-    const granted = await requestPermissions();
-    if (!granted) {
-      throw new Error('Cần quyền thông báo để bật nhắc tập luyện');
+    if (isExpoGo) {
+      startInAppWorkoutReminders(next.wakeup_time);
+    } else {
+      const granted = await requestPermissions();
+      if (!granted) {
+        throw new Error('Cần quyền thông báo để bật nhắc tập luyện');
+      }
+      const Notifications = await getNotifications();
+      if (!Notifications) {
+        throw new Error('Không thể khởi tạo thông báo trên thiết bị này');
+      }
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('workout-reminders', {
+          name: 'Nhắc tập luyện',
+          importance: Notifications.AndroidImportance.DEFAULT,
+        });
+      }
+      await scheduleWorkoutReminder(next.wakeup_time);
     }
-    const Notifications = await getNotifications();
-    if (!Notifications) {
-      throw new Error('Không thể khởi tạo thông báo trên thiết bị này');
-    }
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('workout-reminders', {
-        name: 'Nhắc tập luyện',
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
-    }
-    await scheduleWorkoutReminder(next.wakeup_time);
   } else if (prefs.workout_reminder_enabled === false) {
     await cancelWorkoutReminder();
   } else if (
@@ -209,19 +316,22 @@ export async function updateNotificationPreferences(
 
 /**
  * Khôi phục lịch nhắc khi mở app (gọi từ App.tsx sau login + onboarding).
- * Đọc cờ server, đặt lại 8 mốc nước và nhắc tập nếu user đã bật trước đó.
+ * Đọc cờ server; Expo Go khôi phục Alert in-app, Dev build đặt lại lịch push.
  */
 export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
   await syncWaterRemindersOnLaunch(userId);
 
-  if (isExpoGo) return;
-
   const prefs = await getNotificationPreferences(userId);
-  if (prefs.workout_reminder_enabled) {
-    const granted = await requestPermissions();
-    if (granted) {
-      await scheduleWorkoutReminder(prefs.wakeup_time);
-    }
+  if (!prefs.workout_reminder_enabled) return;
+
+  if (isExpoGo) {
+    startInAppWorkoutReminders(prefs.wakeup_time);
+    return;
+  }
+
+  const granted = await requestPermissions();
+  if (granted) {
+    await scheduleWorkoutReminder(prefs.wakeup_time);
   }
 }
 

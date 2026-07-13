@@ -1,0 +1,94 @@
+% Pandoc LaTeX template — Đặc tả chức năng FitLife (XeLaTeX + tiếng Việt)
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{vietnamese}
+\setotherlanguage{english}
+\defaultfontfeatures{Ligatures=TeX}
+\setmainfont{lmsans10-regular.otf}[
+  BoldFont = lmsans10-bold.otf,
+  ItalicFont = lmsans10-oblique.otf,
+  BoldItalicFont = lmsans10-boldoblique.otf
+]
+\setsansfont{lmsans10-regular.otf}[
+  BoldFont = lmsans10-bold.otf,
+  ItalicFont = lmsans10-oblique.otf,
+  BoldItalicFont = lmsans10-boldoblique.otf
+]
+\setmonofont{lmmonolt10-regular.otf}[
+  BoldFont = lmmonolt10-bold.otf,
+  ItalicFont = lmmonolt10-oblique.otf,
+  BoldItalicFont = lmmonolt10-boldoblique.otf,
+  Scale = MatchLowercase
+]
+
+\usepackage[margin=2.2cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\emergencystretch}{3em}
+\raggedbottom
+\usepackage{microtype}
+
+\usepackage{xcolor}
+\definecolor{linkcolor}{RGB}{45,90,30}
+\definecolor{codebg}{RGB}{245,245,245}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linkcolor,
+  urlcolor=linkcolor,
+  citecolor=linkcolor,
+  pdfauthor={FitLife},
+  pdftitle={Tài liệu Đặc tả Chức năng}
+}
+
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{etoolbox}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{5pt}
+\AtBeginEnvironment{longtable}{\small}
+\newcounter{none}
+\renewcommand{\thenone}{}
+
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  rulecolor=\color{gray!40},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+}
+\providecommand{\passthrough}[1]{#1}
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+$if(title)$
+\title{$title$}
+$endif$
+$if(author)$
+\author{$for(author)$$author$$sep$ \\ $endfor$}
+$endif$
+\date{$if(date)$$date$$else$\today$endif$}
+
+\begin{document}
+$if(title)$
+\maketitle
+$endif$
+$if(toc)$
+\renewcommand{\contentsname}{$toc-title$}
+\tableofcontents
+\newpage
+$endif$
+
+$body$
+
+\end{document}

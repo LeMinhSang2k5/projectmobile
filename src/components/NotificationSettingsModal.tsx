@@ -109,7 +109,7 @@ export default function NotificationSettingsModal({
           {!isNotificationSupported() && (
             <View style={styles.notice}>
               <Text style={styles.noticeText}>
-                Expo Go: nhắc uống nước dùng chế độ trong app. Nhắc tập luyện push cần development build.
+                Expo Go: nhắc nước và nhắc tập dùng Alert trong app (chỉ khi app đang mở). Push hệ thống cần development build.
               </Text>
             </View>
           )}
