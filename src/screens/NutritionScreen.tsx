@@ -53,7 +53,6 @@ import {
   getOverMacroLabels,
   getRemainingWaterMl,
 } from '../lib/limitWarnings';
-import { useHideOnScroll } from '../hooks/useHideOnScroll';
 
 const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner'];
 
@@ -84,15 +83,15 @@ export default function NutritionScreen({ userId }: Props) {
   });
   const [applyingMeal, setApplyingMeal] = useState<MealType | null>(null);
   const [macroHintDismissed, setMacroHintDismissed] = useState(false);
+  const [isWaterDragging, setIsWaterDragging] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const mealJournalY = useRef(0);
-  const handleScroll = useHideOnScroll();
 
   const fetchData = useCallback(async () => {
     try {
       let prof = await getProfile(userId);
       if (prof && checkHealth(prof)) {
-        prof = (await recalculateAndSave(userId)) ?? prof;
+prof = (await recalculateAndSave(userId)) ?? prof;
       }
       setProfile(prof);
       setReminderEnabled(prof?.water_reminder_enabled ?? false);
@@ -194,9 +193,21 @@ export default function NutritionScreen({ userId }: Props) {
   const handleSetWaterToGoal = async () => {
     const goalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
     try {
-      const updated = await setWaterMl(userId, goalMl, profile, today);
+const updated = await setWaterMl(userId, goalMl, profile, today);
       setWater(updated);
     } catch (err: any) {
+      Alert.alert('Lỗi', err.message ?? 'Không thể điều chỉnh nước');
+    }
+  };
+
+  const handleSetWaterDirect = async (ml: number) => {
+    const previousWater = water;
+    setWater((current) => (current ? { ...current, water_ml: ml } : current));
+    try {
+      const updated = await setWaterMl(userId, ml, profile, today);
+      setWater(updated);
+    } catch (err: any) {
+      setWater(previousWater);
       Alert.alert('Lỗi', err.message ?? 'Không thể điều chỉnh nước');
     }
   };
@@ -270,7 +281,7 @@ export default function NutritionScreen({ userId }: Props) {
   const waterMl = water?.water_ml ?? 0;
   const waterGoalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
   const profileComplete = profile ? checkHealth(profile) : false;
-  const calorieLimit = getCalorieLimitStatus(caloriesConsumed, calorieGoal);
+const calorieLimit = getCalorieLimitStatus(caloriesConsumed, calorieGoal);
   const macroLimits = getMacroLimitItems(
     nutrition?.protein_g ?? 0,
     nutrition?.carbs_g ?? 0,
@@ -291,8 +302,7 @@ export default function NutritionScreen({ userId }: Props) {
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        scrollEnabled={!isWaterDragging}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -343,7 +353,7 @@ export default function NutritionScreen({ userId }: Props) {
               <Text style={[styles.summaryValue, { color: colors.primaryFixed }]}>{caloriesConsumed}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Còn lại</Text>
+<Text style={styles.summaryLabel}>Còn lại</Text>
               <Text style={styles.summaryValue}>
                 {calorieLimit.isOver
                   ? `Vượt ${calorieLimit.excess} kcal`
@@ -414,7 +424,7 @@ export default function NutritionScreen({ userId }: Props) {
         <View
           style={styles.sectionHeader}
           onLayout={(event) => {
-            mealJournalY.current = event.nativeEvent.layout.y;
+mealJournalY.current = event.nativeEvent.layout.y;
           }}
         >
           <Text style={styles.sectionTitle}>Nhật ký bữa ăn</Text>
@@ -439,6 +449,8 @@ export default function NutritionScreen({ userId }: Props) {
           waterMl={waterMl}
           waterGoalMl={waterGoalMl}
           onAddWater={handleAddWater}
+          onSetWaterMl={handleSetWaterDirect}
+          onDragStateChange={setIsWaterDragging}
           onSetWaterToGoal={handleSetWaterToGoal}
         />
 
@@ -511,7 +523,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   summaryCard: {
-    flexDirection: 'row',
+flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
     backgroundColor: colors.glass,
@@ -649,7 +661,7 @@ const styles = StyleSheet.create({
   suggestionApplyText: {
     fontFamily: 'Inter-Bold',
     fontSize: 12,
-    color: colors.onPrimaryFixed,
+color: colors.onPrimaryFixed,
   },
   suggestionItem: {
     paddingVertical: 8,
