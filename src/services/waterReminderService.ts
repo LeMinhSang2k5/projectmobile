@@ -100,10 +100,7 @@ async function getNotifications(): Promise<NotificationsModule | null> {
   return notificationsModule;
 }
 
-async function requestPermissions(): Promise<boolean> {
-  const Notifications = await getNotifications();
-  if (!Notifications) return false;
-
+async function requestPermissions(Notifications: NotificationsModule): Promise<boolean> {
   const existing = await Notifications.getPermissionsAsync();
   if (isNotificationGranted(existing)) return true;
 
@@ -121,8 +118,18 @@ async function ensureWaterAndroidChannel(Notifications: NotificationsModule): Pr
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('water-reminders', {
     name: 'Nhắc uống nước',
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
   });
+}
+
+function androidWaterContent(Notifications: NotificationsModule) {
+  return Platform.OS === 'android'
+    ? {
+        channelId: 'water-reminders' as const,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      }
+    : {};
 }
 
 async function cancelWaterNotifications(): Promise<void> {
@@ -149,13 +156,14 @@ async function scheduleWaterNotifications(): Promise<void> {
 
   for (const hour of WATER_REMINDER_HOURS) {
     const id = await Notifications.scheduleNotificationAsync({
+      identifier: `water-reminder-${hour}`,
       content: {
         title: 'Nhắc uống nước 💧',
         body: 'Đã đến giờ uống nước! Hãy bổ sung nước để duy trì sức khỏe.',
         sound: true,
-        ...(Platform.OS === 'android' ? { channelId: 'water-reminders' } : {}),
+        ...androidWaterContent(Notifications),
       },
-      trigger: buildDailyTrigger(Notifications, hour, 0, 'water-reminders'),
+      trigger: buildDailyTrigger(Notifications, hour, 0),
     });
     ids.push(id);
   }
@@ -175,18 +183,15 @@ export async function enableWaterReminders(userId: string): Promise<void> {
     return;
   }
 
-  const granted = await requestPermissions();
-  if (!granted) {
-    throw new Error('Cần quyền thông báo để bật nhắc uống nước');
-  }
-
   const Notifications = await getNotifications();
   if (!Notifications) {
     throw new Error('Không thể khởi tạo thông báo trên thiết bị này');
   }
 
-  if (Platform.OS === 'android') {
-    await ensureWaterAndroidChannel(Notifications);
+  await ensureWaterAndroidChannel(Notifications);
+  const granted = await requestPermissions(Notifications);
+  if (!granted) {
+    throw new Error('Cần quyền thông báo để bật nhắc uống nước');
   }
 
   await scheduleWaterNotifications();
@@ -224,12 +229,12 @@ export async function syncWaterRemindersOnLaunch(userId: string): Promise<void> 
     return;
   }
 
-  const granted = await requestPermissions();
-  if (!granted) return;
-
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
   await ensureWaterAndroidChannel(Notifications);
+  const granted = await requestPermissions(Notifications);
+  if (!granted) return;
+
   await scheduleWaterNotifications();
 }

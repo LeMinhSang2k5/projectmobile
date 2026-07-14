@@ -66,10 +66,7 @@ async function getNotifications(): Promise<NotificationsModule | null> {
   return notificationsModule;
 }
 
-async function requestPermissions(): Promise<boolean> {
-  const Notifications = await getNotifications();
-  if (!Notifications) return false;
-
+async function requestPermissions(Notifications: NotificationsModule): Promise<boolean> {
   const existing = await Notifications.getPermissionsAsync();
   if (isNotificationGranted(existing)) return true;
 
@@ -83,8 +80,18 @@ async function ensureWorkoutAndroidChannel(Notifications: NotificationsModule): 
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('workout-reminders', {
     name: 'Nhắc tập luyện',
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
   });
+}
+
+function androidWorkoutContent(Notifications: NotificationsModule) {
+  return Platform.OS === 'android'
+    ? {
+        channelId: 'workout-reminders' as const,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      }
+    : {};
 }
 
 function parseWakeupTime(value: string): { hour: number; minute: number } {
@@ -220,13 +227,14 @@ async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
   const { hour, minute } = parseWakeupTime(wakeupTime);
 
   const id = await Notifications.scheduleNotificationAsync({
+    identifier: 'workout-reminder-daily',
     content: {
       title: 'Giờ tập luyện 💪',
-      body: 'Đã đến giờ tập! Hãy bắt đầu buổi tập của bạn ngay hôm nay.',
+      body: 'Đã đến giờ tập! Hãy bắt đầu buổi tập hoặc duy trì thói quen vận động hôm nay.',
       sound: true,
-      ...(Platform.OS === 'android' ? { channelId: 'workout-reminders' } : {}),
+      ...androidWorkoutContent(Notifications),
     },
-    trigger: buildDailyTrigger(Notifications, hour, minute, 'workout-reminders'),
+    trigger: buildDailyTrigger(Notifications, hour, minute),
   });
 
   await AsyncStorage.setItem(WORKOUT_REMINDER_ID_KEY, id);
@@ -279,16 +287,14 @@ export async function updateNotificationPreferences(
     if (isExpoGo) {
       startInAppWorkoutReminders(next.wakeup_time);
     } else {
-      const granted = await requestPermissions();
-      if (!granted) {
-        throw new Error('Cần quyền thông báo để bật nhắc tập luyện');
-      }
       const Notifications = await getNotifications();
       if (!Notifications) {
         throw new Error('Không thể khởi tạo thông báo trên thiết bị này');
       }
-      if (Platform.OS === 'android') {
-        await ensureWorkoutAndroidChannel(Notifications);
+      await ensureWorkoutAndroidChannel(Notifications);
+      const granted = await requestPermissions(Notifications);
+      if (!granted) {
+        throw new Error('Cần quyền thông báo để bật nhắc tập luyện');
       }
       await scheduleWorkoutReminder(next.wakeup_time);
     }
@@ -331,14 +337,14 @@ export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
     return;
   }
 
-  const granted = await requestPermissions();
-  if (granted) {
-    const Notifications = await getNotifications();
-    if (Notifications) {
-      await ensureWorkoutAndroidChannel(Notifications);
-    }
-    await scheduleWorkoutReminder(prefs.wakeup_time);
-  }
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
+
+  await ensureWorkoutAndroidChannel(Notifications);
+  const granted = await requestPermissions(Notifications);
+  if (!granted) return;
+
+  await scheduleWorkoutReminder(prefs.wakeup_time);
 }
 
 /** Local notification tức thời khi mở khóa huy hiệu mới. */
@@ -346,7 +352,7 @@ export async function notifyBadgeEarned(title: string, body: string): Promise<vo
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
-  const granted = await requestPermissions();
+  const granted = await requestPermissions(Notifications);
   if (!granted) return;
 
   await Notifications.scheduleNotificationAsync({
