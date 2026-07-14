@@ -71,6 +71,8 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
   const [dob, setDob] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [goal, setGoal] = useState<GoalKey | null>(null);
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
   const [saving, setSaving] = useState(false);
   const slideAnim = useRef(new Animated.Value(600)).current;
   const nameRef = useRef<TextInputType>(null);
@@ -83,6 +85,8 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
       const dobField = (profile as any).date_of_birth;
       setDob(dobField ? new Date(dobField) : null);
       setGoal((profile.fitness_goal as GoalKey) ?? null);
+      setHeight(profile.height_cm?.toString() ?? '');
+      setWeight(profile.weight_kg?.toString() ?? '');
       Animated.spring(slideAnim, {
         toValue: 0, useNativeDriver: true, tension: 65, friction: 11,
       }).start();
@@ -111,6 +115,9 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
       display_name: trimmedName,
       fitness_goal: goal,
     };
+    if (height) payload.height_cm = parseFloat(height);
+    if (weight) payload.weight_kg = parseFloat(weight);
+
     if (dob) {
       payload.date_of_birth = toLocalDateString(dob);
       payload.age = calcAge(dob);
@@ -208,6 +215,38 @@ function EditProfileModal({ visible, profile, onClose, onSaved, userId }: EditMo
               <Text style={styles.pickerDoneBtnText}>Xong</Text>
             </TouchableOpacity>
           )}
+
+          {/* ── Chiều cao & Cân nặng ── */}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Chiều cao (cm)</Text>
+              <View style={styles.fieldWrapper}>
+                <MaterialIcons name="height" size={18} color={colors.onSurfaceVariant} style={styles.fieldIcon} />
+                <TextInput
+                  style={styles.fieldInput}
+                  value={height}
+                  onChangeText={setHeight}
+                  placeholder="Ví dụ: 170"
+                  placeholderTextColor="rgba(196,201,174,0.4)"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fieldLabel}>Cân nặng (kg)</Text>
+              <View style={styles.fieldWrapper}>
+                <MaterialIcons name="monitor-weight" size={18} color={colors.onSurfaceVariant} style={styles.fieldIcon} />
+                <TextInput
+                  style={styles.fieldInput}
+                  value={weight}
+                  onChangeText={setWeight}
+                  placeholder="Ví dụ: 65"
+                  placeholderTextColor="rgba(196,201,174,0.4)"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          </View>
 
           {/* ── Mục tiêu ── */}
           <Text style={styles.fieldLabel}>Mục tiêu tập luyện</Text>
@@ -472,6 +511,9 @@ export default function ProfileScreen({
   const macroGoals = getMacroGoals(profile);
   const goalInfo = FITNESS_GOALS.find(g => g.key === profile?.fitness_goal);
 
+  const heightM = (profile?.height_cm ?? 0) / 100;
+  const bmi = (profile?.weight_kg && heightM) ? (profile.weight_kg / (heightM * heightM)).toFixed(1) : '--';
+
   return (
     <>
       <ScrollView
@@ -582,7 +624,7 @@ export default function ProfileScreen({
           </TouchableOpacity>
         )}
 
-        {/* ─── Stats Row ─── */}
+        {/* ─── Stats Row 1 ─── */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{activeCourse?.completed_sessions ?? 0}</Text>
@@ -595,6 +637,22 @@ export default function ProfileScreen({
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{liveAge ?? '--'}</Text>
             <Text style={styles.statLabel}>Tuổi</Text>
+          </View>
+        </View>
+
+        {/* ─── Stats Row 2 (Chỉ số cơ thể) ─── */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{profile?.weight_kg ?? '--'}</Text>
+            <Text style={styles.statLabel}>Cân Nặng (kg)</Text>
+          </View>
+          <View style={[styles.statCard, styles.statCardMiddle]}>
+            <Text style={styles.statValue}>{profile?.height_cm ?? '--'}</Text>
+            <Text style={styles.statLabel}>Chiều Cao (cm)</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{bmi}</Text>
+            <Text style={styles.statLabel}>BMI</Text>
           </View>
         </View>
 
