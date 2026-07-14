@@ -7,6 +7,7 @@ import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { supabase } from '../../utils/supabase';
+import { buildDailyTrigger } from '../lib/notificationTriggers';
 
 type NotificationsModule = typeof import('expo-notifications');
 type PermResult = { granted?: boolean; status?: string };
@@ -154,12 +155,7 @@ async function scheduleWaterNotifications(): Promise<void> {
         sound: true,
         ...(Platform.OS === 'android' ? { channelId: 'water-reminders' } : {}),
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-        hour,
-        minute: 0,
-        repeats: true,
-      },
+      trigger: buildDailyTrigger(Notifications, hour, 0, 'water-reminders'),
     });
     ids.push(id);
   }

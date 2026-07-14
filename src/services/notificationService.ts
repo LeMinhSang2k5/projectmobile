@@ -14,6 +14,7 @@ import {
   syncWaterRemindersOnLaunch,
 } from './waterReminderService';
 import type { NotificationPreferences } from '../types';
+import { buildDailyTrigger } from '../lib/notificationTriggers';
 
 type NotificationsModule = typeof import('expo-notifications');
 type PermResult = { granted?: boolean; status?: string };
@@ -204,7 +205,7 @@ async function cancelWorkoutReminder(): Promise<void> {
   }
 }
 
-/** Lập lịch nhắc tập hàng ngày đúng giờ wakeup_time (trigger CALENDAR, repeats: true). */
+/** Lập lịch nhắc tập hàng ngày đúng giờ wakeup_time (trigger DAILY). */
 async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
   if (isExpoGo) {
     startInAppWorkoutReminders(wakeupTime);
@@ -225,12 +226,7 @@ async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
       sound: true,
       ...(Platform.OS === 'android' ? { channelId: 'workout-reminders' } : {}),
     },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-      hour,
-      minute,
-      repeats: true,
-    },
+    trigger: buildDailyTrigger(Notifications, hour, minute, 'workout-reminders'),
   });
 
   await AsyncStorage.setItem(WORKOUT_REMINDER_ID_KEY, id);
