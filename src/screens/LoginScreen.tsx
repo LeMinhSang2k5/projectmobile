@@ -20,9 +20,6 @@ import { colors } from '../theme/colors';
 import { supabase } from '../../utils/supabase';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
 
-// ─────────────────────────────────────────────
-// Background tĩnh - KHÔNG BAO GIỜ re-render
-// ─────────────────────────────────────────────
 const StaticBackground = memo(() => (
   <>
     <Image
@@ -35,10 +32,6 @@ const StaticBackground = memo(() => (
     <View style={styles.neonGlowBottomLeft} pointerEvents="none" />
   </>
 ));
-
-// ─────────────────────────────────────────────
-// EmailInput
-// ─────────────────────────────────────────────
 type EmailInputProps = {
   value: string;
   onChangeText: (v: string) => void;
@@ -76,9 +69,6 @@ const EmailInput = memo(({ value, onChangeText, onSubmitEditing, focused, onFocu
   </View>
 ));
 
-// ─────────────────────────────────────────────
-// PasswordInput
-// ─────────────────────────────────────────────
 type PasswordInputProps = {
   label?: string;
   value: string;
@@ -136,9 +126,7 @@ const PasswordInput = memo(({ label = 'Mật khẩu', value, onChangeText, onSub
   );
 });
 
-// ─────────────────────────────────────────────
-// Main LoginScreen
-// ─────────────────────────────────────────────
+
 export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -270,7 +258,7 @@ export default function LoginScreen() {
               style={styles.logoImage}
               resizeMode="contain"
             />
-            <Text style={styles.logoText}>ELITE FIT</Text>
+            <Text style={styles.logoText}>FlexFit</Text>
             <Text style={styles.subtitle}>Khai Phá Tiềm Năng</Text>
           </View>
 

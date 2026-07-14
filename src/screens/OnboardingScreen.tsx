@@ -200,7 +200,7 @@ export default function OnboardingScreen({ userId, onCompleted }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.brand}>ELITE FIT</Text>
+          <Text style={styles.brand}>FlexFit</Text>
           <Text style={styles.stepText}>Bước {step + 1} / 3</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: progress }]} />

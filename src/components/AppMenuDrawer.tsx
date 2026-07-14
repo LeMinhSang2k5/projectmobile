@@ -120,7 +120,7 @@ export default function AppMenuDrawer({
                 resizeMode="contain"
               />
               <View>
-                <Text style={styles.brandTitle}>ELITE FIT</Text>
+                <Text style={styles.brandTitle}>FlexFit</Text>
                 <Text style={styles.brandSub}>
                   Xin chào, {displayName?.trim() || 'bạn'}
                 </Text>

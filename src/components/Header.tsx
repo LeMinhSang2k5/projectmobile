@@ -37,7 +37,7 @@ export default function Header({ avatarUrl, onAvatarPress, onMenuPress }: Props)
           resizeMode="contain"
         />
         <View>
-          <Text style={styles.title}>ELITE FIT</Text>
+          <Text style={styles.title}>FlexFit</Text>
           <Text style={styles.tagline}>Performance Hub</Text>
         </View>
       </View>
