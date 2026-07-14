@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FlexFit",
-    "slug": "fitness-app",
+    "slug": "test",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
@@ -40,8 +40,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "4b4276cf-ede6-4a92-86e5-19c987a8d84f"
+        "projectId": "20b28921-9e24-4145-b5f0-36cc00df9d5b"
       }
-    }
+    },
+    "owner": "leminhsang2k5"
   }
 }
