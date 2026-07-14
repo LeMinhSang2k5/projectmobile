@@ -20,7 +20,6 @@ import WorkoutCard from '../components/WorkoutCard';
 import StatsGrid from '../components/StatsGrid';
 import WeeklyProgressChart from '../components/WeeklyProgressChart';
 import BadgeGrid from '../components/BadgeGrid';
-import NotificationSettingsModal from '../components/NotificationSettingsModal';
 import GlassCard from '../components/ui/GlassCard';
 import SectionHeader from '../components/ui/SectionHeader';
 import { getDashboardSummary } from '../services/dashboardService';
@@ -41,6 +40,8 @@ type Props = {
   onNavigateToNutrition?: () => void;
   /** Chuyen sang tab Training khi bam the buoi tap hoac "Xem tat ca" */
   onNavigateToTraining?: () => void;
+  /** Mo modal cai dat thong bao (tu nut chuong hoac bao thuc tap luyen) */
+  onOpenNotificationSettings?: () => void;
 };
 
 /** Mot o trong luoi Chi so nhanh: streak, calo dot, buoi tap, ky luc */
@@ -58,13 +59,13 @@ export default function DashboardScreen({
   refreshKey = 0,
   onNavigateToNutrition,
   onNavigateToTraining,
+  onOpenNotificationSettings,
 }: Props) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [workoutCard, setWorkoutCard] = useState<WorkoutCardSummary | null>(null);
   const [badges, setBadges] = useState<BadgeWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [settingsVisible, setSettingsVisible] = useState(false);
   /** An bottom tab khi scroll den cuoi danh sach */
   const handleScroll = useHideOnScroll();
 
@@ -194,7 +195,7 @@ export default function DashboardScreen({
             </View>
             <TouchableOpacity
               style={styles.notifyButton}
-              onPress={() => setSettingsVisible(true)}
+              onPress={() => onOpenNotificationSettings?.()}
               activeOpacity={0.85}
             >
               <MaterialIcons name="notifications-none" size={22} color={colors.onPrimaryFixed} />
@@ -257,6 +258,7 @@ export default function DashboardScreen({
         <StatsGrid
           userId={userId}
           onNavigateToNutrition={onNavigateToNutrition}
+          onOpenNotificationSettings={onOpenNotificationSettings}
           refreshKey={refreshKey}
           showStreak={false}
         />
@@ -268,14 +270,6 @@ export default function DashboardScreen({
         />
         <BadgeGrid badges={badges} />
       </ScrollView>
-
-      {/* Modal: nho nuoc, nho tap, thong bao huy hieu */}
-      <NotificationSettingsModal
-        visible={settingsVisible}
-        userId={userId}
-        onClose={() => setSettingsVisible(false)}
-        onUpdated={onRefresh}
-      />
     </>
   );
 }

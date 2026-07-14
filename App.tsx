@@ -170,7 +170,15 @@ export default function App() {
         return <ProgramsScreen onSelectProgram={handleSelectProgram} refreshKey={dashboardRefreshKey} />;
       default:
         // Tab Home: tong quan, chi so, buoi tap, suc khoe, huy hieu
-        return <DashboardScreen userId={userId} refreshKey={dashboardRefreshKey} onNavigateToNutrition={() => setActiveTab('nutrition')} onNavigateToTraining={() => setActiveTab('training')} />;
+        return (
+          <DashboardScreen
+            userId={userId}
+            refreshKey={dashboardRefreshKey}
+            onNavigateToNutrition={() => setActiveTab('nutrition')}
+            onNavigateToTraining={() => setActiveTab('training')}
+            onOpenNotificationSettings={() => setNotificationSettingsVisible(true)}
+          />
+        );
     }
   };
 
@@ -201,6 +209,14 @@ export default function App() {
             )}
             {userId && (
               <AppMenuDrawer visible={menuVisible} activeTab={activeTab} displayName={displayName} isAdmin={isAdmin} onClose={() => setMenuVisible(false)} onNavigate={(tab) => { setMenuVisible(false); setActiveTab(tab); }} onOpenNotifications={() => { setMenuVisible(false); setNotificationSettingsVisible(true); }} onOpenAdmin={() => { setMenuVisible(false); setAdminVisible(true); }} onSignOut={() => void supabase.auth.signOut()} />
+            )}
+            {userId && (
+              <NotificationSettingsModal
+                visible={notificationSettingsVisible}
+                userId={userId}
+                onClose={() => setNotificationSettingsVisible(false)}
+                onUpdated={() => setDashboardRefreshKey((v) => v + 1)}
+              />
             )}
           </SafeAreaView>
         </BottomNavContext.Provider>

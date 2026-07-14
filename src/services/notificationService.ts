@@ -78,6 +78,14 @@ async function requestPermissions(): Promise<boolean> {
   return isNotificationGranted(result);
 }
 
+async function ensureWorkoutAndroidChannel(Notifications: NotificationsModule): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync('workout-reminders', {
+    name: 'Nhắc tập luyện',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 function parseWakeupTime(value: string): { hour: number; minute: number } {
   const [hourText, minuteText] = value.split(':');
   const hour = Number(hourText);
@@ -206,6 +214,7 @@ async function scheduleWorkoutReminder(wakeupTime: string): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
+  await ensureWorkoutAndroidChannel(Notifications);
   await cancelWorkoutReminder();
   const { hour, minute } = parseWakeupTime(wakeupTime);
 
@@ -283,10 +292,7 @@ export async function updateNotificationPreferences(
         throw new Error('Không thể khởi tạo thông báo trên thiết bị này');
       }
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('workout-reminders', {
-          name: 'Nhắc tập luyện',
-          importance: Notifications.AndroidImportance.DEFAULT,
-        });
+        await ensureWorkoutAndroidChannel(Notifications);
       }
       await scheduleWorkoutReminder(next.wakeup_time);
     }
@@ -331,14 +337,21 @@ export async function syncAllRemindersOnLaunch(userId: string): Promise<void> {
 
   const granted = await requestPermissions();
   if (granted) {
+    const Notifications = await getNotifications();
+    if (Notifications) {
+      await ensureWorkoutAndroidChannel(Notifications);
+    }
     await scheduleWorkoutReminder(prefs.wakeup_time);
   }
 }
 
-/** Local notification tức thời khi mở khóa huy hiệu mới (chưa tự xin quyền OS). */
+/** Local notification tức thời khi mở khóa huy hiệu mới. */
 export async function notifyBadgeEarned(title: string, body: string): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;
+
+  const granted = await requestPermissions();
+  if (!granted) return;
 
   await Notifications.scheduleNotificationAsync({
     content: { title, body, sound: true },

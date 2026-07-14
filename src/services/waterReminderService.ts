@@ -116,6 +116,14 @@ async function requestPermissions(): Promise<boolean> {
   return isNotificationGranted(result);
 }
 
+async function ensureWaterAndroidChannel(Notifications: NotificationsModule): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync('water-reminders', {
+    name: 'Nhắc uống nước',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 async function cancelWaterNotifications(): Promise<void> {
   stopInAppWaterReminders();
 
@@ -134,6 +142,7 @@ async function scheduleWaterNotifications(): Promise<void> {
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
+  await ensureWaterAndroidChannel(Notifications);
   await cancelWaterNotifications();
   const ids: string[] = [];
 
@@ -181,10 +190,7 @@ export async function enableWaterReminders(userId: string): Promise<void> {
   }
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('water-reminders', {
-      name: 'Nhắc uống nước',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
+    await ensureWaterAndroidChannel(Notifications);
   }
 
   await scheduleWaterNotifications();
@@ -223,5 +229,11 @@ export async function syncWaterRemindersOnLaunch(userId: string): Promise<void> 
   }
 
   const granted = await requestPermissions();
-  if (granted) await scheduleWaterNotifications();
+  if (!granted) return;
+
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
+
+  await ensureWaterAndroidChannel(Notifications);
+  await scheduleWaterNotifications();
 }

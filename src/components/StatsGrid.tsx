@@ -25,6 +25,7 @@ import {
 type Props = {
   userId: string;
   onNavigateToNutrition?: () => void;
+  onOpenNotificationSettings?: () => void;
   refreshKey?: number;
   showStreak?: boolean;
 };
@@ -33,6 +34,7 @@ type Props = {
 export default function StatsGrid({
   userId,
   onNavigateToNutrition,
+  onOpenNotificationSettings,
   refreshKey = 0,
   showStreak = false,
 }: Props) {
@@ -137,6 +139,7 @@ export default function StatsGrid({
   const waterMl = water?.water_ml ?? 0;
   const waterGoalMl = water?.water_goal_ml ?? getWaterGoalMl(profile);
   const wakeupTime = profile?.wakeup_time ?? '06:30';
+  const workoutReminderEnabled = profile?.workout_reminder_enabled ?? false;
   const calorieLimit = getCalorieLimitStatus(caloriesConsumed, calorieGoal);
 
   return (
@@ -151,18 +154,35 @@ export default function StatsGrid({
         </GlassCard>
       ) : null}
 
-      <GlassCard padding={spacing.xl}>
-        <View style={styles.alarmRow}>
-          <View style={styles.iconCircle}>
-            <MaterialIcons name="alarm" size={24} color={colors.primaryFixed} />
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onOpenNotificationSettings}
+        disabled={!onOpenNotificationSettings}
+      >
+        <GlassCard padding={spacing.xl}>
+          <View style={styles.alarmRow}>
+            <View style={styles.iconCircle}>
+              <MaterialIcons
+                name={workoutReminderEnabled ? 'alarm' : 'alarm-off'}
+                size={24}
+                color={workoutReminderEnabled ? colors.primaryFixed : colors.onSurfaceVariant}
+              />
+            </View>
+            <View style={styles.alarmTextContainer}>
+              <Text style={styles.alarmLabel}>BÁO THỨC TẬP LUYỆN</Text>
+              <Text style={styles.alarmTime}>{wakeupTime}</Text>
+              <Text style={styles.alarmSub}>
+                {workoutReminderEnabled
+                  ? 'Đã bật — chạm để chỉnh sửa'
+                  : 'Chưa bật — chạm để cài đặt'}
+              </Text>
+            </View>
+            {onOpenNotificationSettings ? (
+              <MaterialIcons name="chevron-right" size={22} color={colors.onSurfaceVariant} />
+            ) : null}
           </View>
-          <View style={styles.alarmTextContainer}>
-            <Text style={styles.alarmLabel}>BÁO THỨC TẬP LUYỆN</Text>
-            <Text style={styles.alarmTime}>{wakeupTime}</Text>
-            <Text style={styles.alarmSub}>Cài đặt trong Profile</Text>
-          </View>
-        </View>
-      </GlassCard>
+        </GlassCard>
+      </TouchableOpacity>
 
       <TouchableOpacity activeOpacity={0.85} onPress={onNavigateToNutrition}>
         <GlassCard style={styles.foodCard} padding={spacing.xl}>
