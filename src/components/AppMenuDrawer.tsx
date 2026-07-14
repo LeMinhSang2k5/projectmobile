@@ -12,6 +12,7 @@ import {
   Animated,
   Pressable,
   Alert,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -112,11 +113,18 @@ export default function AppMenuDrawer({
           ]}
         >
           <View style={styles.brandRow}>
-            <View>
-              <Text style={styles.brandTitle}>ELITE FIT</Text>
-              <Text style={styles.brandSub}>
-                Xin chào, {displayName?.trim() || 'bạn'}
-              </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Image
+                source={require('../../public/fitness_app_logo_letter_f.png')}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
+              <View>
+                <Text style={styles.brandTitle}>ELITE FIT</Text>
+                <Text style={styles.brandSub}>
+                  Xin chào, {displayName?.trim() || 'bạn'}
+                </Text>
+              </View>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={12}>
               <MaterialIcons name="close" size={24} color={colors.onSurface} />
@@ -227,8 +235,13 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 24,
+  },
+  brandLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
   },
   brandTitle: {
     fontFamily: 'Montserrat-ExtraBold',

@@ -31,8 +31,15 @@ export default function Header({ avatarUrl, onAvatarPress, onMenuPress }: Props)
       </TouchableOpacity>
 
       <View style={styles.brandWrap}>
-        <Text style={styles.title}>ELITE FIT</Text>
-        <Text style={styles.tagline}>Performance Hub</Text>
+        <Image
+          source={require('../../public/fitness_app_logo_letter_f.png')}
+          style={styles.brandLogo}
+          resizeMode="contain"
+        />
+        <View>
+          <Text style={styles.title}>ELITE FIT</Text>
+          <Text style={styles.tagline}>Performance Hub</Text>
+        </View>
       </View>
 
       <TouchableOpacity
@@ -75,7 +82,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   brandWrap: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  brandLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
   },
   title: {
     fontFamily: 'Montserrat-ExtraBold',

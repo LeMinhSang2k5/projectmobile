@@ -265,6 +265,11 @@ export default function LoginScreen() {
         >
           {/* Logo */}
           <View style={styles.header}>
+            <Image
+              source={require('../../public/fitness_app_logo_letter_f.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.logoText}>ELITE FIT</Text>
             <Text style={styles.subtitle}>Khai Phá Tiềm Năng</Text>
           </View>
@@ -388,6 +393,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: { alignItems: 'center', marginBottom: 40 },
+  logoImage: { width: 90, height: 90, marginBottom: 10, borderRadius: 20 },
   logoText: {
     fontFamily: 'Montserrat-ExtraBold', fontSize: 48,
     color: colors.primaryFixed, letterSpacing: -1,
